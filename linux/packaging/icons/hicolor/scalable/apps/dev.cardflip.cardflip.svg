@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="linear-gradient-1" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#60a5fa"/>
+      <stop offset="0.5" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <filter id="filter-1" filterUnits="userSpaceOnUse" x="201.155" y="157.239" width="581.689" height="689.522" data-vc-blend="multiply" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="12"/><feOffset dx="0" dy="10" result="shadow"/><feFlood flood-color="#1e3a8a" flood-opacity="0.18"/><feComposite in2="shadow" operator="in" result="paint"/><feMerge><feMergeNode in="paint"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="filter-2" filterUnits="userSpaceOnUse" x="259.623" y="189.324" width="560.753" height="685.352" data-vc-blend="multiply" color-interpolation-filters="sRGB"><feGaussianBlur in="SourceAlpha" stdDeviation="14"/><feOffset dx="0" dy="14" result="shadow"/><feFlood flood-color="#1e3a8a" flood-opacity="0.25"/><feComposite in2="shadow" operator="in" result="paint"/><feMerge><feMergeNode in="paint"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <title>Untitled-2</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <path d="M228 0 L796 0 C921.921 0 1024 102.079 1024 228 L1024 796 C1024 921.921 921.921 1024 796 1024 L228 1024 C102.079 1024 0 921.921 0 796 L0 228 C0 102.079 102.079 0 228 0 Z" fill="url(#linear-gradient-1)"/>
+    <g filter="url(#filter-1)">
+      <path d="M287.185 269.503 L584.542 206.298 C610.473 200.786 635.961 217.339 641.473 243.269 L733.786 677.566 C739.298 703.497 722.745 728.986 696.815 734.497 L399.458 797.702 C373.527 803.214 348.039 786.661 342.527 760.731 L250.214 326.434 C244.702 300.503 261.255 275.014 287.185 269.503 Z" fill="#bfdbfe"/>
+    </g>
+    <g filter="url(#filter-2)">
+      <path d="M417.055 247.591 L719.39 279.367 C745.754 282.138 764.881 305.757 762.11 332.122 L715.699 773.69 C712.928 800.054 689.309 819.18 662.945 816.409 L360.61 784.633 C334.246 781.862 315.119 758.243 317.89 731.878 L364.301 290.31 C367.072 263.946 390.691 244.82 417.055 247.591 Z" fill="#ffffff"/>
+    </g>
+    <path d="M441.129 483.781 C459.107 446.908 496.11 423.103 537.118 422.028 C578.126 420.952 616.326 442.785 636.212 478.665" fill="none" stroke="#2563eb" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M638.871 580.219 C620.893 617.092 583.89 640.897 542.882 641.972 C501.874 643.048 463.674 621.215 443.788 585.335" fill="none" stroke="#2563eb" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M679.611 452.156 L655.756 537.53 L593.055 502.685 Z" fill="#2563eb"/>
+    <path d="M400.389 611.844 L424.244 526.47 L486.945 561.315 Z" fill="#2563eb"/>
+  </g>
+</svg>

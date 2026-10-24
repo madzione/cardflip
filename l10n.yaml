@@ -1,0 +1,9 @@
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# Missing translations fall back to English per string; list them instead of
+# failing the build.
+untranslated-messages-file: build/untranslated_messages.json
+# Quotes escape ICU syntax: '{' is a brace, '' an apostrophe.
+use-escaping: true

@@ -1,0 +1,33 @@
+# App icons for every platform except Linux, which tool/generate_icons.sh
+# handles. Run tool/generate_icons.sh rather than the generator directly.
+# Artwork source: assets/logo/cardflip_logo.vectorcraft.
+flutter_launcher_icons:
+  image_path: "assets/logo/cardflip_logo_1024.png"
+
+  android: true
+  min_sdk_android: 21
+  adaptive_icon_background: "assets/logo/cardflip_icon_background.png"
+  adaptive_icon_foreground: "assets/logo/cardflip_icon_foreground.png"
+  # The foreground artwork is already padded to the adaptive safe zone.
+  adaptive_icon_foreground_inset: 0
+
+  ios: true
+  # iOS rounds the corners itself and rejects transparency.
+  image_path_ios: "assets/logo/cardflip_icon_square.png"
+  remove_alpha_ios: true
+  background_color_ios: "#3B82F6"
+
+  web:
+    generate: true
+    image_path: "assets/logo/cardflip_logo_1024.png"
+    background_color: "#3B82F6"
+    theme_color: "#3B82F6"
+
+  windows:
+    generate: true
+    image_path: "assets/logo/cardflip_logo_1024.png"
+    icon_size: 256
+
+  macos:
+    generate: true
+    image_path: "assets/logo/cardflip_icon_macos.png"

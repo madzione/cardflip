@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Cardflip
+GenericName=Flash Card Trainer
+Comment=Learn with spaced-repetition flash cards
+Exec=cardflip
+Icon=dev.cardflip.cardflip
+Terminal=false
+Categories=Education;
+Keywords=flashcards;spaced repetition;anki;study;learn;
+StartupNotify=true
+StartupWMClass=dev.cardflip.cardflip

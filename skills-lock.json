@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "fluffy": {
+      "source": "madzione/fluffy",
+      "sourceType": "github",
+      "skillPath": "skills/fluffy/SKILL.md",
+      "computedHash": "066ebb5faf3d43d1ce9164a12032fa5dadd8cb76444f07236192794c5ff6260c"
+    }
+  }
+}
