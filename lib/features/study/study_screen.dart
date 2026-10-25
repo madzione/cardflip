@@ -9,6 +9,7 @@ import 'package:cardflip/app/errors.dart';
 import 'package:cardflip/app/shortcuts.dart';
 import 'package:cardflip/app/theme.dart';
 import 'package:cardflip/data/changes.dart';
+import 'package:cardflip/data/progress_model.dart';
 import 'package:cardflip/data/scope.dart';
 import 'package:cardflip/features/browse/card_info_screen.dart';
 import 'package:cardflip/features/browse/delete_cards.dart';
@@ -17,6 +18,7 @@ import 'package:cardflip/features/browse/set_due_date_dialog.dart';
 import 'package:cardflip/features/decks/filtered_deck_screen.dart';
 import 'package:cardflip/features/editor/math_insert.dart' show MenuEntryLabel;
 import 'package:cardflip/features/editor/note_editor_screen.dart';
+import 'package:cardflip/features/progress/achievements.dart';
 import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/card_view.dart';
@@ -2056,7 +2058,10 @@ class _Summary extends StatelessWidget {
         studied,
         if (learning != null) l.moreLearningDue(formatDue(learning)),
       ],
-      extra: _ProgressLines(studiedBefore: studiedBefore),
+      extra: _ProgressLines(
+        studiedBefore: studiedBefore,
+        newAchievements: true,
+      ),
       action: Wrap(
         spacing: 12,
         children: [
@@ -2073,25 +2078,48 @@ class _Summary extends StatelessWidget {
 }
 
 /// The streak and goal lines of the summary and nothing-due screens
-/// (progress spec, "Summary progress lines"), and the one-time suggestion
-/// to set a daily goal. Nothing is shown while streaks and goals are off.
+/// (progress spec, "Summary progress lines"), the summary's line of new
+/// achievements (study-session spec, "New achievements on the summary"),
+/// and the one-time suggestion to set a daily goal. Nothing is shown while
+/// streaks and goals are off.
 class _ProgressLines extends StatefulWidget {
-  const _ProgressLines({required this.studiedBefore});
+  const _ProgressLines({
+    required this.studiedBefore,
+    this.newAchievements = false,
+  });
 
   /// Whether today was a study day when the session started: if not and it
   /// is now, the session extended the streak.
   final bool? studiedBefore;
+
+  /// Whether to name the achievement tiers not shown yet, and mark them
+  /// shown so the deck list does not tell again.
+  final bool newAchievements;
 
   @override
   State<_ProgressLines> createState() => _ProgressLinesState();
 }
 
 class _ProgressLinesState extends State<_ProgressLines> {
+  /// The new achievement tiers named here, kept once marked shown.
+  final _new = <golang.NewAchievement>[];
+
   @override
   void initState() {
     super.initState();
     // The numbers after the session's last answer.
     AppScope.read(context).progress.load();
+  }
+
+  /// "New: 1,000 answers" for the tiers new so far, which are then marked
+  /// shown; null while there are none.
+  String? _newLine(ProgressModel progress, AppLocalizations l) {
+    final fresh = progress.newAchievements;
+    if (fresh.isNotEmpty) {
+      _new.addAll(fresh);
+      progress.markSeen(fresh);
+    }
+    return _new.isEmpty ? null : newAchievementsLine(l, _new);
   }
 
   @override
@@ -2117,6 +2145,7 @@ class _ProgressLinesState extends State<_ProgressLines> {
             'minutes' => l.goalMinutesLeft(p.goal - p.todayMinutes),
             _ => null,
           },
+          if (widget.newAchievements) ?_newLine(app.progress, l),
         ];
         final suggest =
             settings.dailyGoalKind.isEmpty && !settings.goalSuggestionShown;

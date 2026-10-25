@@ -12,7 +12,7 @@ var syncedSettings = []string{
 	"HidePlayButtons", "KeepAudioOnAnswer", "HideRemainingCounts", "HideIntervals", "SpaceOnlyReveals",
 	"HideBarsDuringReview", "QuestionFadeMs", "TimeboxMinutes",
 	"IgnoreAccents", "StripPasteFormatting", "PasteImagesAsPng", "DeckByNoteType",
-	"DailyGoalKind", "DailyGoal",
+	"DailyGoalKind", "DailyGoal", "RestDaysPerWeek",
 }
 
 // localSettings names the Settings fields that stay on the device: the
@@ -23,6 +23,7 @@ var localSettings = []string{
 	"LastNoteTypeID", "LastDeckID", "LastDeckByNoteType", "LastDueDate", "CurrentDeckID", "RecentDecks",
 	"BrowserColumns", "BrowserMode", "BrowserSplit", "SavedSearches", "DefaultSearch",
 	"Backup", "PersistenceNoticeShown", "HideProgress", "GoalSuggestionShown",
+	"SeenAchievements",
 }
 
 // syncedSettingsEqual reports whether a and b agree on every synced field.

@@ -753,6 +753,9 @@ func (c *Collection) UpdateSettings(s Settings) error {
 	default:
 		return userErr("unknownDailyGoal", "Unknown daily goal %q.", s.DailyGoalKind)
 	}
+	if s.RestDaysPerWeek < 0 || s.RestDaysPerWeek > MaxRestDaysPerWeek {
+		return userErr("restDaysRange", "The rest days per week must be between 0 and %d.", MaxRestDaysPerWeek)
+	}
 	if b := s.Backup; b.IntervalMinutes < 0 || b.IntervalMinutes > MaxBackupInterval {
 		return userErr("backupIntervalRange", "The backup interval must be between 0 and %d minutes.", MaxBackupInterval)
 	} else if min(b.Daily, b.Weekly, b.Monthly) < 0 || max(b.Daily, b.Weekly, b.Monthly) > MaxBackupsKept {

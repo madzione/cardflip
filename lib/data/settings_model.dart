@@ -9,6 +9,9 @@ import 'package:cardflip/golang/golang.dart' as golang;
 import 'changes.dart';
 
 /// The app settings, stored in the Go collection (so backups include them).
+/// The most rest days per week a streak can allow.
+const maxRestDaysPerWeek = 2;
+
 class SettingsModel extends ChangeNotifier {
   SettingsModel(ChangeHub changes) {
     _sub = changes.stream.listen((c) {
@@ -43,6 +46,10 @@ class SettingsModel extends ChangeNotifier {
   /// for none.
   String dailyGoalKind = '';
   int dailyGoal = 0;
+
+  /// How many days without study, 0 to [maxRestDaysPerWeek], a streak
+  /// survives in any 7 days in a row; it belongs to the collection.
+  int restDaysPerWeek = 0;
 
   /// Whether the user opened or dismissed the one-time suggestion to set a
   /// daily goal.
@@ -151,6 +158,7 @@ class SettingsModel extends ChangeNotifier {
       showProgress = s.showProgress;
       dailyGoalKind = s.dailyGoalKind;
       dailyGoal = s.dailyGoal;
+      restDaysPerWeek = s.restDaysPerWeek;
       goalSuggestionShown = s.goalSuggestionShown;
       autoContinueLearning = s.autoContinueLearning;
       learnAheadMinutes = s.learnAheadMinutes;
@@ -250,6 +258,13 @@ class SettingsModel extends ChangeNotifier {
       notifyListeners();
     }
     return ok;
+  }
+
+  Future<void> setRestDaysPerWeek(int n) async {
+    if (await guard(() => golang.app.setRestDaysPerWeek(n))) {
+      restDaysPerWeek = n;
+      notifyListeners();
+    }
   }
 
   /// Records that the user opened or dismissed the goal suggestion.

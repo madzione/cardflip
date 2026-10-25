@@ -506,6 +506,12 @@ abstract class AppLocalizations {
   /// **'The daily goal must be between 1 and {max}.'**
   String goDailyGoalRange(int max);
 
+  /// A message from Go (code restDaysRange).
+  ///
+  /// In en, this message translates to:
+  /// **'The rest days per week must be between 0 and {max}.'**
+  String goRestDaysRange(int max);
+
   /// A message from Go (code dayCountRange).
   ///
   /// In en, this message translates to:
@@ -5155,6 +5161,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Studying on any day keeps your streak, whether or not you reach the goal.'**
   String get dailyGoalHelp;
+
+  /// Setting: how many days without study a streak survives in any 7 days.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest days per week'**
+  String get restDaysPerWeek;
+
+  /// No description provided for @restDaysPerWeekHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Days without study that keep a streak going, in any 7 days in a row.'**
+  String get restDaysPerWeekHelp;
+
+  /// Screen and menu entry listing the achievement badges.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achievements;
+
+  /// Achievement name: number of answers.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers'**
+  String get achievementAnswers;
+
+  /// Achievement name: longest streak.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak'**
+  String get achievementStreak;
+
+  /// Achievement name: number of days with study.
+  ///
+  /// In en, this message translates to:
+  /// **'Study days'**
+  String get achievementStudyDays;
+
+  /// Achievement name: days the daily goal was met.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal'**
+  String get achievementDailyGoal;
+
+  /// Achievement name: cards whose interval reached 21 days.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-term memory'**
+  String get achievementLongTerm;
+
+  /// Achievement name: studying again after 14 or more days without study.
+  ///
+  /// In en, this message translates to:
+  /// **'Comeback'**
+  String get achievementComeback;
+
+  /// First achievement tier.
+  ///
+  /// In en, this message translates to:
+  /// **'Bronze'**
+  String get tierBronze;
+
+  /// Second achievement tier.
+  ///
+  /// In en, this message translates to:
+  /// **'Silver'**
+  String get tierSilver;
+
+  /// Third achievement tier.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold'**
+  String get tierGold;
+
+  /// Fourth achievement tier.
+  ///
+  /// In en, this message translates to:
+  /// **'Platinum'**
+  String get tierPlatinum;
+
+  /// The threshold of an Answers tier, e.g. "1,000 answers".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 answer} other{{count} answers}}'**
+  String tierAnswers(int count);
+
+  /// The threshold of a Streak or Study days tier, e.g. "100 days".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String tierDays(int count);
+
+  /// The threshold of a Daily goal tier, e.g. "met on 100 days".
+  ///
+  /// In en, this message translates to:
+  /// **'met on {count, plural, =1{1 day} other{{count} days}}'**
+  String tierGoalDays(int count);
+
+  /// The threshold of a Long-term memory tier, e.g. "1,000 cards".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 card} other{{count} cards}}'**
+  String tierCards(int count);
+
+  /// The only tier of the Comeback achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'One-time'**
+  String get tierOneTime;
+
+  /// An achievement tier, e.g. "Gold · 100 days".
+  ///
+  /// In en, this message translates to:
+  /// **'{tier} · {threshold}'**
+  String tierWithThreshold(String tier, String threshold);
+
+  /// When an achievement tier was earned.
+  ///
+  /// In en, this message translates to:
+  /// **'Earned {date}'**
+  String achievementEarnedOn(String date);
+
+  /// Progress toward the next tier, e.g. "640 / 1,000".
+  ///
+  /// In en, this message translates to:
+  /// **'{progress} / {next}'**
+  String achievementProgress(int progress, int next);
+
+  /// No description provided for @achievementAllEarned.
+  ///
+  /// In en, this message translates to:
+  /// **'All tiers earned'**
+  String get achievementAllEarned;
+
+  /// No description provided for @achievementNeedsGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a daily goal to start'**
+  String get achievementNeedsGoal;
+
+  /// No description provided for @achievementComebackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Study again after 14 days or more without study'**
+  String get achievementComebackHint;
+
+  /// Screen reader label of a locked badge.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, not earned yet'**
+  String achievementLocked(String name);
+
+  /// Screen reader label of an earned badge, e.g. "Streak, Gold".
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, {tier}'**
+  String achievementEarned(String name, String tier);
+
+  /// A new Answers tier in a notice, e.g. "New: 1,000 answers".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 answer} other{{count} answers}}'**
+  String newAnswers(int count);
+
+  /// A new Streak tier in a notice.
+  ///
+  /// In en, this message translates to:
+  /// **'{count}-day streak'**
+  String newStreak(int count);
+
+  /// A new Study days tier in a notice.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 study day} other{{count} study days}}'**
+  String newStudyDays(int count);
+
+  /// A new Daily goal tier in a notice.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal met on {count, plural, =1{1 day} other{{count} days}}'**
+  String newDailyGoal(int count);
+
+  /// A new Long-term memory tier in a notice.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 card} other{{count} cards}} in long-term memory'**
+  String newLongTerm(int count);
+
+  /// Summary line naming the achievement tiers earned in the session, e.g. "New: 1,000 answers".
+  ///
+  /// In en, this message translates to:
+  /// **'New: {names}'**
+  String newAchievementsLine(String names);
+
+  /// Summary line when more than three tiers were earned in the session.
+  ///
+  /// In en, this message translates to:
+  /// **'New: {count} achievements'**
+  String newAchievementsCountLine(int count);
+
+  /// Deck list message for one tier earned through sync or import.
+  ///
+  /// In en, this message translates to:
+  /// **'New achievement: {name}'**
+  String newAchievement(String name);
+
+  /// Deck list message for two or three tiers.
+  ///
+  /// In en, this message translates to:
+  /// **'New achievements: {names}'**
+  String newAchievements(String names);
+
+  /// Deck list message when more than three tiers are new at once, e.g. after an import.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} achievements from your history'**
+  String achievementsFromHistory(int count);
+
+  /// Action of the new achievement message that opens the achievements screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Show'**
+  String get showAchievements;
 
   /// Settings section about the study screen.
   ///

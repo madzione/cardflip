@@ -167,13 +167,164 @@ class FlagColors extends ThemeExtension<FlagColors> {
   }
 }
 
+/// The colours of a badge's rim: the top and bottom of the ring's gradient
+/// and the scalloped seal around it, which also outlines the disc and the
+/// stars.
+@immutable
+class RimColors {
+  const RimColors(this.top, this.bottom, this.seal);
+
+  final Color top;
+  final Color bottom;
+  final Color seal;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RimColors &&
+      other.top == top &&
+      other.bottom == bottom &&
+      other.seal == seal;
+
+  @override
+  int get hashCode => Object.hash(top, bottom, seal);
+
+  static RimColors lerp(RimColors a, RimColors b, double t) => RimColors(
+    Color.lerp(a.top, b.top, t)!,
+    Color.lerp(a.bottom, b.bottom, t)!,
+    Color.lerp(a.seal, b.seal, t)!,
+  );
+}
+
+/// The colours of achievement badges: a rim per tier, and the grey rim,
+/// disc and padlock of a locked badge. They follow the draft designs in
+/// assets/badges/; the metals stay the same in the dark theme, the locked
+/// greys are darker there.
+@immutable
+class BadgeColors extends ThemeExtension<BadgeColors> {
+  const BadgeColors({
+    required this.bronze,
+    required this.silver,
+    required this.gold,
+    required this.platinum,
+    required this.locked,
+    required this.lockedDiscTop,
+    required this.lockedDiscBottom,
+    required this.padlock,
+  });
+
+  final RimColors bronze;
+  final RimColors silver;
+  final RimColors gold;
+  final RimColors platinum;
+  final RimColors locked;
+  final Color lockedDiscTop;
+  final Color lockedDiscBottom;
+
+  /// The disc behind the padlock of a locked badge.
+  final Color padlock;
+
+  static const _bronze = RimColors(
+    Color(0xFFF0B484),
+    Color(0xFFA9612F),
+    Color(0xFF7A4320),
+  );
+  static const _silver = RimColors(
+    Color(0xFFF4F6F9),
+    Color(0xFF9AA3AF),
+    Color(0xFF6B7480),
+  );
+  static const _gold = RimColors(
+    Color(0xFFFFE38F),
+    Color(0xFFD49A1E),
+    Color(0xFF9E6C0C),
+  );
+  static const _platinum = RimColors(
+    Color(0xFFF2F7FC),
+    Color(0xFF8FA6BF),
+    Color(0xFF4F6478),
+  );
+
+  static const light = BadgeColors(
+    bronze: _bronze,
+    silver: _silver,
+    gold: _gold,
+    platinum: _platinum,
+    locked: RimColors(Color(0xFFDADADA), Color(0xFFA6A6A6), Color(0xFF8C8C8C)),
+    lockedDiscTop: Color(0xFFCFCFCF),
+    lockedDiscBottom: Color(0xFFB5B5B5),
+    padlock: Color(0xFF6F6F6F),
+  );
+
+  static const dark = BadgeColors(
+    bronze: _bronze,
+    silver: _silver,
+    gold: _gold,
+    platinum: _platinum,
+    locked: RimColors(Color(0xFF8A8A8A), Color(0xFF5C5C5C), Color(0xFF474747)),
+    lockedDiscTop: Color(0xFF7A7A7A),
+    lockedDiscBottom: Color(0xFF606060),
+    padlock: Color(0xFF3A3A3A),
+  );
+
+  static BadgeColors of(BuildContext context) =>
+      Theme.of(context).extension<BadgeColors>() ?? light;
+
+  /// The rim of [tier] ("bronze" to "platinum").
+  RimColors rim(String tier) => switch (tier) {
+    'bronze' => bronze,
+    'silver' => silver,
+    'platinum' => platinum,
+    _ => gold,
+  };
+
+  @override
+  BadgeColors copyWith({
+    RimColors? bronze,
+    RimColors? silver,
+    RimColors? gold,
+    RimColors? platinum,
+    RimColors? locked,
+    Color? lockedDiscTop,
+    Color? lockedDiscBottom,
+    Color? padlock,
+  }) => BadgeColors(
+    bronze: bronze ?? this.bronze,
+    silver: silver ?? this.silver,
+    gold: gold ?? this.gold,
+    platinum: platinum ?? this.platinum,
+    locked: locked ?? this.locked,
+    lockedDiscTop: lockedDiscTop ?? this.lockedDiscTop,
+    lockedDiscBottom: lockedDiscBottom ?? this.lockedDiscBottom,
+    padlock: padlock ?? this.padlock,
+  );
+
+  @override
+  BadgeColors lerp(BadgeColors? other, double t) {
+    if (other == null) return this;
+    return BadgeColors(
+      bronze: RimColors.lerp(bronze, other.bronze, t),
+      silver: RimColors.lerp(silver, other.silver, t),
+      gold: RimColors.lerp(gold, other.gold, t),
+      platinum: RimColors.lerp(platinum, other.platinum, t),
+      locked: RimColors.lerp(locked, other.locked, t),
+      lockedDiscTop: Color.lerp(lockedDiscTop, other.lockedDiscTop, t)!,
+      lockedDiscBottom: Color.lerp(
+        lockedDiscBottom,
+        other.lockedDiscBottom,
+        t,
+      )!,
+      padlock: Color.lerp(padlock, other.padlock, t)!,
+    );
+  }
+}
+
 const _seed = Color(0xFF3B82F6);
 
 /// The light theme; [minimalist] flattens it (see [minimalistTheme]).
 ThemeData lightTheme({bool minimalist = false}) {
   final theme = ThemeData(
     colorScheme: ColorScheme.fromSeed(seedColor: _seed),
-    extensions: const [CountColors.light, FlagColors.light],
+    extensions: const [CountColors.light, FlagColors.light, BadgeColors.light],
   );
   return minimalist ? minimalistTheme(theme) : theme;
 }
@@ -185,7 +336,7 @@ ThemeData darkTheme({bool minimalist = false}) {
       seedColor: _seed,
       brightness: Brightness.dark,
     ),
-    extensions: const [CountColors.dark, FlagColors.dark],
+    extensions: const [CountColors.dark, FlagColors.dark, BadgeColors.dark],
   );
   return minimalist ? minimalistTheme(theme) : theme;
 }

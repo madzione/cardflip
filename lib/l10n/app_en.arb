@@ -516,6 +516,15 @@
       }
     }
   },
+  "goRestDaysRange": "The rest days per week must be between 0 and {max}.",
+  "@goRestDaysRange": {
+    "description": "A message from Go (code restDaysRange).",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "goDayCountRange": "The number of days must be between 1 and {max}.",
   "@goDayCountRange": {
     "description": "A message from Go (code dayCountRange).",
@@ -4201,6 +4210,259 @@
   "dailyGoalMinutesLabel": "Minutes per day",
   "dailyGoalError": "Enter a whole number from 1 to 9999.",
   "dailyGoalHelp": "Studying on any day keeps your streak, whether or not you reach the goal.",
+  "restDaysPerWeek": "Rest days per week",
+  "@restDaysPerWeek": {
+    "description": "Setting: how many days without study a streak survives in any 7 days."
+  },
+  "restDaysPerWeekHelp": "Days without study that keep a streak going, in any 7 days in a row.",
+  "achievements": "Achievements",
+  "@achievements": {
+    "description": "Screen and menu entry listing the achievement badges."
+  },
+  "achievementAnswers": "Answers",
+  "@achievementAnswers": {
+    "description": "Achievement name: number of answers."
+  },
+  "achievementStreak": "Streak",
+  "@achievementStreak": {
+    "description": "Achievement name: longest streak."
+  },
+  "achievementStudyDays": "Study days",
+  "@achievementStudyDays": {
+    "description": "Achievement name: number of days with study."
+  },
+  "achievementDailyGoal": "Daily goal",
+  "@achievementDailyGoal": {
+    "description": "Achievement name: days the daily goal was met."
+  },
+  "achievementLongTerm": "Long-term memory",
+  "@achievementLongTerm": {
+    "description": "Achievement name: cards whose interval reached 21 days."
+  },
+  "achievementComeback": "Comeback",
+  "@achievementComeback": {
+    "description": "Achievement name: studying again after 14 or more days without study."
+  },
+  "tierBronze": "Bronze",
+  "@tierBronze": {
+    "description": "First achievement tier."
+  },
+  "tierSilver": "Silver",
+  "@tierSilver": {
+    "description": "Second achievement tier."
+  },
+  "tierGold": "Gold",
+  "@tierGold": {
+    "description": "Third achievement tier."
+  },
+  "tierPlatinum": "Platinum",
+  "@tierPlatinum": {
+    "description": "Fourth achievement tier."
+  },
+  "tierAnswers": "{count, plural, =1{1 answer} other{{count} answers}}",
+  "@tierAnswers": {
+    "description": "The threshold of an Answers tier, e.g. \"1,000 answers\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tierDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@tierDays": {
+    "description": "The threshold of a Streak or Study days tier, e.g. \"100 days\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tierGoalDays": "met on {count, plural, =1{1 day} other{{count} days}}",
+  "@tierGoalDays": {
+    "description": "The threshold of a Daily goal tier, e.g. \"met on 100 days\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tierCards": "{count, plural, =1{1 card} other{{count} cards}}",
+  "@tierCards": {
+    "description": "The threshold of a Long-term memory tier, e.g. \"1,000 cards\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tierOneTime": "One-time",
+  "@tierOneTime": {
+    "description": "The only tier of the Comeback achievement."
+  },
+  "tierWithThreshold": "{tier} · {threshold}",
+  "@tierWithThreshold": {
+    "description": "An achievement tier, e.g. \"Gold · 100 days\".",
+    "placeholders": {
+      "tier": {
+        "type": "String"
+      },
+      "threshold": {
+        "type": "String"
+      }
+    }
+  },
+  "achievementEarnedOn": "Earned {date}",
+  "@achievementEarnedOn": {
+    "description": "When an achievement tier was earned.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "achievementProgress": "{progress} / {next}",
+  "@achievementProgress": {
+    "description": "Progress toward the next tier, e.g. \"640 / 1,000\".",
+    "placeholders": {
+      "progress": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "achievementAllEarned": "All tiers earned",
+  "achievementNeedsGoal": "Set a daily goal to start",
+  "achievementComebackHint": "Study again after 14 days or more without study",
+  "achievementLocked": "{name}, not earned yet",
+  "@achievementLocked": {
+    "description": "Screen reader label of a locked badge.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "achievementEarned": "{name}, {tier}",
+  "@achievementEarned": {
+    "description": "Screen reader label of an earned badge, e.g. \"Streak, Gold\".",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "newAnswers": "{count, plural, =1{1 answer} other{{count} answers}}",
+  "@newAnswers": {
+    "description": "A new Answers tier in a notice, e.g. \"New: 1,000 answers\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newStreak": "{count}-day streak",
+  "@newStreak": {
+    "description": "A new Streak tier in a notice.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newStudyDays": "{count, plural, =1{1 study day} other{{count} study days}}",
+  "@newStudyDays": {
+    "description": "A new Study days tier in a notice.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newDailyGoal": "Daily goal met on {count, plural, =1{1 day} other{{count} days}}",
+  "@newDailyGoal": {
+    "description": "A new Daily goal tier in a notice.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newLongTerm": "{count, plural, =1{1 card} other{{count} cards}} in long-term memory",
+  "@newLongTerm": {
+    "description": "A new Long-term memory tier in a notice.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newAchievementsLine": "New: {names}",
+  "@newAchievementsLine": {
+    "description": "Summary line naming the achievement tiers earned in the session, e.g. \"New: 1,000 answers\".",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "newAchievementsCountLine": "New: {count} achievements",
+  "@newAchievementsCountLine": {
+    "description": "Summary line when more than three tiers were earned in the session.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newAchievement": "New achievement: {name}",
+  "@newAchievement": {
+    "description": "Deck list message for one tier earned through sync or import.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "newAchievements": "New achievements: {names}",
+  "@newAchievements": {
+    "description": "Deck list message for two or three tiers.",
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "achievementsFromHistory": "{count} achievements from your history",
+  "@achievementsFromHistory": {
+    "description": "Deck list message when more than three tiers are new at once, e.g. after an import.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "showAchievements": "Show",
+  "@showAchievements": {
+    "description": "Action of the new achievement message that opens the achievements screen."
+  },
   "review": "Review",
   "@review": {
     "description": "Settings section about the study screen."

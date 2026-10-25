@@ -36,7 +36,7 @@ After a backup is restored, a collection package is imported or a new collection
 - **THEN** the user is asked whether to merge or which side to replace, and nothing is changed before the answer
 
 ### Requirement: What is synced
-Sync SHALL carry decks, deck descriptions and limits, presets with their options, note types, notes, cards with their scheduling state, flags, suspension and burying, filtered decks, the review history, deletions of all of these, media files, and the collection settings that affect studying and card content, including the daily goal. It SHALL NOT carry device settings, including whether streaks and goals are shown.
+Sync SHALL carry decks, deck descriptions and limits, presets with their options, note types, notes, cards with their scheduling state, flags, suspension and burying, filtered decks, the review history, deletions of all of these, media files, and the collection settings that affect studying and card content, including the daily goal and rest days per week. It SHALL NOT carry device settings, including whether streaks and goals are shown and which achievements the device has already shown.
 
 #### Scenario: Synced study settings
 - **WHEN** the user changes the rollover hour to 6 on the laptop and syncs
@@ -53,6 +53,14 @@ Sync SHALL carry decks, deck descriptions and limits, presets with their options
 #### Scenario: Visibility stays
 - **WHEN** the user turns off *Show streaks and goals* on the phone and syncs
 - **THEN** the laptop still shows streaks and goals
+
+#### Scenario: Rest days synced
+- **WHEN** the user sets 1 rest day per week on the phone and syncs
+- **THEN** the laptop computes streaks with 1 rest day per week
+
+#### Scenario: Achievements shown per device
+- **WHEN** the phone has shown the notice for Answers 1,000 and the devices sync
+- **THEN** the laptop still shows that notice once
 
 ### Requirement: Changes on both sides are combined
 When both devices changed a collection since their last sync, sync SHALL keep the changes of both. For one object changed on both, such as the same note, the later change SHALL win. A card's scheduling SHALL be merged separately from its flag, suspension and deck.

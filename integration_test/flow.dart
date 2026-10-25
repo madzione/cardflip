@@ -257,6 +257,28 @@ Future<void> runAppFlow(
       findsOneWidget,
     );
 
+    // The achievements: nothing earned yet, with the session's progress.
+    step = 'The achievements screen shows the progress of the session.';
+    await tester.tap(find.byTooltip('More'));
+    await idle();
+    await tester.tap(find.text('Achievements'));
+    await idle();
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('achievement-answers-status')))
+          .data,
+      '3 / 100',
+    );
+    expect(
+      tester
+          .widget<Text>(find.byKey(const Key('achievement-streak-status')))
+          .data,
+      '1 / 7',
+    );
+    expect(find.byKey(const Key('new-achievements')), findsNothing);
+    await tester.pageBack();
+    await idle();
+
     // Device sync is offered everywhere but on the web.
     step = 'Settings has a Sync section, except on the web.';
     await go('Settings');

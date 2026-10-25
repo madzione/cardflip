@@ -278,13 +278,14 @@ func TestSyncSettings(t *testing.T) {
 	a, b := linkedPair(t, nil)
 	advance(time.Minute, a, b)
 	s := a.c.Settings()
-	s.RolloverHour, s.Theme, s.Language = 6, ThemeDark, "de"
+	s.RolloverHour, s.Theme, s.Language, s.RestDaysPerWeek = 6, ThemeDark, "de", 1
 	noErr(t, a.c.UpdateSettings(s))
 	s = b.c.Settings()
 	s.Theme, s.Language = ThemeLight, "en"
 	noErr(t, b.c.UpdateSettings(s))
 	syncPair(t, a, b)
-	if got := b.c.Settings(); got.RolloverHour != 6 || got.Theme != ThemeLight || got.Language != "en" {
+	// Rest days synced (spec).
+	if got := b.c.Settings(); got.RolloverHour != 6 || got.Theme != ThemeLight || got.Language != "en" || got.RestDaysPerWeek != 1 {
 		t.Fatalf("phone's settings = %+v", got)
 	}
 	if got := a.c.Settings(); got.RolloverHour != 6 || got.Theme != ThemeDark || got.Language != "de" {

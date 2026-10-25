@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:cardflip/data/scope.dart';
+
 import 'study_test.dart' show FakeStudy, pumpStudy, studyCard;
 import 'support/fake_go.dart';
 
 void main() {
   /// Studies one card of a session, with [before] as the progress when the
   /// session starts and [after] once the card is answered.
-  Future<void> studyOne(
+  Future<AppState> studyOne(
     WidgetTester tester,
     FakeGo go, {
     required Map<String, Object?> before,
@@ -15,13 +17,14 @@ void main() {
   }) async {
     FakeStudy(go, [studyCard(1, 'hola', 'hello')]);
     go.progress = before;
-    await pumpStudy(tester, loadSettings: true);
+    final app = await pumpStudy(tester, loadSettings: true);
     go.progress = after;
     await tester.tap(find.text('Show answer'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('rate-3')));
     await tester.pumpAndSettle();
     expect(find.text('Session complete'), findsOneWidget);
+    return app;
   }
 
   FakeGo withGoal(String kind, int value) {
@@ -174,5 +177,71 @@ void main() {
     );
     expect(find.text('Current streak: 12 days'), findsOneWidget);
     expect(find.text("12 more cards to reach today's goal"), findsOneWidget);
+  });
+
+  testWidgets('new achievement on the summary', (tester) async {
+    // Earned during the session (study-session spec): the 1,000th answer
+    // is named on the summary, nothing appeared while studying, and the
+    // tier is marked shown, so the deck list does not tell again.
+    final go = FakeGo();
+    final app = await studyOne(
+      tester,
+      go,
+      before: progressJson(current: 12, cards: 5),
+      after: progressJson(
+        current: 12,
+        cards: 6,
+        newAchievements: [newAchievementJson('answers', 1000)],
+      ),
+    );
+    expect(find.text('New: 1,000 answers'), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    expect(go.callsTo('progress.MarkSeen'), [
+      [
+        ['answers:1000'],
+      ],
+    ]);
+    expect(app.progress.newAchievements, isEmpty);
+    // The line stays after the progress reloads without the tier.
+    await app.progress.load();
+    await tester.pumpAndSettle();
+    expect(find.text('New: 1,000 answers'), findsOneWidget);
+    expect(go.callsTo('progress.MarkSeen'), hasLength(1));
+  });
+
+  testWidgets('several new achievements on the summary', (tester) async {
+    // Several earned (study-session spec): one line names both.
+    final go = FakeGo();
+    await studyOne(
+      tester,
+      go,
+      before: progressJson(current: 99, cards: 5),
+      after: progressJson(
+        current: 100,
+        cards: 6,
+        newAchievements: [
+          newAchievementJson('answers', 1000),
+          newAchievementJson('study-days', 100),
+        ],
+      ),
+    );
+    expect(find.text('New: 1,000 answers, 100 study days'), findsOneWidget);
+  });
+
+  testWidgets('no new achievements while hidden', (tester) async {
+    final go = FakeGo();
+    go.settings = {...go.settings, 'showProgress': false};
+    await studyOne(
+      tester,
+      go,
+      before: progressJson(current: 12),
+      after: progressJson(
+        current: 13,
+        cards: 1,
+        newAchievements: [newAchievementJson('answers', 1000)],
+      ),
+    );
+    expect(find.textContaining('New:'), findsNothing);
+    expect(go.callsTo('progress.MarkSeen'), isEmpty);
   });
 }

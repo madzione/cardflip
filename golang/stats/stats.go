@@ -55,7 +55,7 @@ var periodDays = map[string]int{PeriodMonth: 30, Period3Months: 90, PeriodYear: 
 func ValidPeriod(p string) bool { _, ok := periodDays[p]; return ok || p == PeriodAll }
 
 // youngLimit is the interval, in days, from which a card is mature.
-const youngLimit = 21
+const youngLimit = core.MatureInterval
 
 // Kind is what a review was, for the graphs that split reviews.
 type Kind uint8

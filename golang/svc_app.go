@@ -129,6 +129,9 @@ type Settings struct {
 	// DailyGoal is the number of cards or minutes.
 	DailyGoalKind string `json:"dailyGoalKind"`
 	DailyGoal     int    `json:"dailyGoal"`
+	// RestDaysPerWeek is how many days without study, 0 to 2, a streak
+	// survives in any 7 days in a row.
+	RestDaysPerWeek int `json:"restDaysPerWeek"`
 	// GoalSuggestionShown records that the user opened or dismissed the
 	// one-time suggestion to set a daily goal.
 	GoalSuggestionShown bool `json:"goalSuggestionShown"`
@@ -152,7 +155,8 @@ func (s *AppService) Settings() (Settings, error) {
 		QuestionFadeMs: int(st.QuestionFade() / time.Millisecond), RecentDecks: fromIDs(c.RecentDecks()),
 		UIScale: cmp.Or(st.UIScale, core.DefaultUIScale), Minimalist: st.Minimalist,
 		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem), ShowProgress: !st.HideProgress,
-		DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal, GoalSuggestionShown: st.GoalSuggestionShown}, nil
+		DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal, RestDaysPerWeek: st.RestDaysPerWeek,
+		GoalSuggestionShown: st.GoalSuggestionShown}, nil
 }
 
 func browserColumns(st core.Settings) []string {
@@ -273,6 +277,12 @@ func (s *AppService) SetDailyGoal(kind string, value int) error {
 		value = 0
 	}
 	return s.updateSettings(func(st *core.Settings) { st.DailyGoalKind, st.DailyGoal = kind, value })
+}
+
+// SetRestDaysPerWeek sets how many days without study, 0 to 2, a streak
+// survives in any 7 days in a row. It belongs to the collection.
+func (s *AppService) SetRestDaysPerWeek(n int) error {
+	return s.updateSettings(func(st *core.Settings) { st.RestDaysPerWeek = n })
 }
 
 // GoalSuggestionShown records that the user opened or dismissed the

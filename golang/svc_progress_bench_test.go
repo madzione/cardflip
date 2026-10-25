@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand/v2"
+	"runtime"
 	"testing"
 	"time"
 
@@ -46,11 +47,13 @@ func progressCollection(b *testing.B) *services {
 	return s
 }
 
-// Results on a Ryzen 5 5600X (2026-10-25), native and WebAssembly (Node):
+// Results on a Ryzen 5 5600X (2026-10-25), native and WebAssembly (Node),
+// with the achievements' history aggregates:
 //
-//	first call       410 ms   1.8 s    (decoding the review log)
-//	study days       1.8 ms   4.3 ms   (after undo, imports and sync)
-//	after an answer  0.03 ms  0.13 ms
+//	first call       450 ms   1.8 s    (decoding the review log)
+//	study days       2.9 ms   6.2 ms   (after undo, imports and sync)
+//	after an answer  0.07 ms  0.25 ms  (with the achievements)
+//	memory kept      12.6 MB  12.6 MB  (9.2 MB without the aggregates)
 //
 // WebAssembly: PATH=$(go env GOROOT)/lib/wasm:$PATH GOOS=js GOARCH=wasm
 // go test -run x -bench Progress -benchtime 5x
@@ -102,5 +105,27 @@ func BenchmarkProgressAfterAnswer(b *testing.B) {
 	}
 	if per := b.Elapsed() / time.Duration(n); per > 5*time.Millisecond {
 		b.Errorf("Today after an answer took %v, want under 5ms", per)
+	}
+}
+
+// BenchmarkProgressMemory reports the heap that the first call keeps: the
+// review index of 200,000 answers with their progress history, and the
+// progress service's study days.
+func BenchmarkProgressMemory(b *testing.B) {
+	s := progressCollection(b)
+	var before, after runtime.MemStats
+	for range b.N {
+		b.StopTimer()
+		must(s.app.Reload())
+		s.progress = &ProgressService{a: s.app.a}
+		runtime.GC()
+		runtime.ReadMemStats(&before)
+		b.StartTimer()
+		must(s.progress.Today())
+		b.StopTimer()
+		runtime.GC()
+		runtime.ReadMemStats(&after)
+		b.ReportMetric(float64(int64(after.HeapAlloc)-int64(before.HeapAlloc))/1e6, "MB")
+		b.StartTimer()
 	}
 }

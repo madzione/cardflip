@@ -14,13 +14,13 @@ func TestStreakSummaryFixture(t *testing.T) {
 	// and S1's 02:30 answer) and Oct 13. The manual entry of Sep 20 is no
 	// study day.
 	d := f.load(t, Scope{Kind: ScopeCollection})
-	got := StreakSummary(d, Goal{}, PeriodMonth)
+	got := StreakSummary(d, Goal{}, 0, PeriodMonth)
 	want := StreakSection{Current: 2, TodayStudied: true, Longest: 2, LongestFirst: "2026-10-12", LongestLast: "2026-10-13",
 		StudyDays: 3, PeriodDays: 30}
 	if got != want {
 		t.Fatalf("collection = %+v\nwant         %+v", got, want)
 	}
-	if all := StreakSummary(d, Goal{}, PeriodAll); all.StudyDays != 4 || all.PeriodDays != day(fixtureNow)-day(at(9, 13, 12, 0))+1 {
+	if all := StreakSummary(d, Goal{}, 0, PeriodAll); all.StudyDays != 4 || all.PeriodDays != day(fixtureNow)-day(at(9, 13, 12, 0))+1 {
 		t.Fatalf("all = %+v", all)
 	}
 	// Goal days: Oct 13 had 3 answers, Oct 12 two, Oct 1 one; none took a
@@ -29,12 +29,12 @@ func TestStreakSummaryFixture(t *testing.T) {
 		goal Goal
 		want int
 	}{{Goal{core.GoalCards, 2}, 2}, {Goal{core.GoalCards, 3}, 1}, {Goal{core.GoalMinutes, 1}, 0}} {
-		if got := StreakSummary(d, tc.goal, PeriodMonth).GoalDays; got == nil || *got != tc.want {
+		if got := StreakSummary(d, tc.goal, 0, PeriodMonth).GoalDays; got == nil || *got != tc.want {
 			t.Errorf("%+v: goal days %v, want %d", tc.goal, got, tc.want)
 		}
 	}
 	// Deck scope: Spanish::Verbs was only studied today.
-	verbs := StreakSummary(f.load(t, Scope{Kind: ScopeDeck, DeckID: int64(f.verbs)}), Goal{}, PeriodMonth)
+	verbs := StreakSummary(f.load(t, Scope{Kind: ScopeDeck, DeckID: int64(f.verbs)}), Goal{}, 0, PeriodMonth)
 	if verbs.Current != 1 || verbs.Longest != 1 || verbs.StudyDays != 1 || verbs.LongestFirst != "2026-10-13" {
 		t.Fatalf("Spanish::Verbs = %+v", verbs)
 	}
@@ -48,7 +48,7 @@ func TestStreakSummaryFixture(t *testing.T) {
 	if e, err := f.c.Answer(f.n1, scheduler.Good, time.Second); err != nil || !e.Preview {
 		t.Fatalf("preview %+v, %v", e, err)
 	}
-	n1 := StreakSummary(f.load(t, Scope{Kind: ScopeSearch, Query: "n1"}), Goal{}, PeriodMonth)
+	n1 := StreakSummary(f.load(t, Scope{Kind: ScopeSearch, Query: "n1"}), Goal{}, 0, PeriodMonth)
 	if n1 != (StreakSection{PeriodDays: 30}) {
 		t.Fatalf("previewed card = %+v", n1)
 	}
@@ -67,7 +67,7 @@ func TestStreakSummaryGoalDays(t *testing.T) {
 	for back := 60; back < 101; back++ {
 		d.answer(1, back, Young, scheduler.Good, 5, 1000)
 	}
-	got := StreakSummary(d, Goal{core.GoalCards, 30}, PeriodMonth)
+	got := StreakSummary(d, Goal{core.GoalCards, 30}, 0, PeriodMonth)
 	if got.Current != 9 || got.Longest != 41 || got.LongestLast != Date(d.Today-60) || got.LongestFirst != Date(d.Today-100) ||
 		got.StudyDays != 24 || got.PeriodDays != 30 {
 		t.Fatalf("section = %+v", got)
@@ -77,15 +77,15 @@ func TestStreakSummaryGoalDays(t *testing.T) {
 	if got.GoalDays == nil || *got.GoalDays != 9 {
 		t.Fatalf("goal days %v", got.GoalDays)
 	}
-	if g := StreakSummary(d, Goal{core.GoalCards, 50}, PeriodMonth).GoalDays; *g != 0 {
+	if g := StreakSummary(d, Goal{core.GoalCards, 50}, 0, PeriodMonth).GoalDays; *g != 0 {
 		t.Fatalf("raised goal: %d days", *g)
 	}
 	// Minutes: 30 answers of a second each are half a minute.
-	if g := StreakSummary(d, Goal{core.GoalMinutes, 1}, PeriodMonth).GoalDays; *g != 0 {
+	if g := StreakSummary(d, Goal{core.GoalMinutes, 1}, 0, PeriodMonth).GoalDays; *g != 0 {
 		t.Fatalf("minute goal: %d days", *g)
 	}
 	// No goal (spec): no goal days.
-	if g := StreakSummary(d, Goal{}, PeriodMonth).GoalDays; g != nil {
+	if g := StreakSummary(d, Goal{}, 0, PeriodMonth).GoalDays; g != nil {
 		t.Fatalf("no goal: %d days", *g)
 	}
 }

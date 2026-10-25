@@ -251,6 +251,11 @@ class GoApp {
   Future<void> setRenderEnvironment(Env env) =>
       emitter.request<Object?>('app.SetRenderEnvironment', [env.toJson()]);
 
+  /// SetRestDaysPerWeek sets how many days without study, 0 to 2, a streak
+  /// survives in any 7 days in a row. It belongs to the collection.
+  Future<void> setRestDaysPerWeek(int n) =>
+      emitter.request<Object?>('app.SetRestDaysPerWeek', [n]);
+
   /// SetRolloverHour sets the hour (0–23) at which a new study day starts.
   Future<void> setRolloverHour(int hour) =>
       emitter.request<Object?>('app.SetRolloverHour', [hour]);
@@ -1113,8 +1118,9 @@ class GoStats {
   Future<Histogram> stability(Scope scope, String period) async =>
       Histogram.fromJson(await emitter.request<Object?>('stats.Stability', [scope.toJson(), period]));
 
-  /// Streaks are the current and longest streak of the scope, its study days
-  /// in the period and, with a daily goal, the days of the period that met it.
+  /// Streaks are the current and longest streak of the scope, with the rest
+  /// days per week, its study days in the period and, with a daily goal, the
+  /// days of the period that met it.
   Future<StreakSection> streaks(Scope scope, String period) async =>
       StreakSection.fromJson(await emitter.request<Object?>('stats.Streaks', [scope.toJson(), period]));
 
@@ -1134,8 +1140,18 @@ const progress = GoProgress._();
 class GoProgress {
   const GoProgress._();
 
-  /// Today returns the streak and today's progress. The first call reads
-  /// the whole review log.
+  /// Achievements returns every achievement with its progress and the dates
+  /// its tiers were earned.
+  Future<List<AchievementStatus>> achievements() async =>
+      (await emitter.request<Object?>('progress.Achievements', []) as List<dynamic>?)?.map((x0) => AchievementStatus.fromJson(x0)).toList() ?? const <AchievementStatus>[];
+
+  /// MarkSeen records achievement tiers (NewAchievement.Key) as shown on this
+  /// device.
+  Future<void> markSeen(List<String> keys) =>
+      emitter.request<Object?>('progress.MarkSeen', [keys]);
+
+  /// Today returns the streak, today's progress and the achievements not
+  /// shown yet. The first call reads the whole review log.
   Future<Progress> today() async =>
       Progress.fromJson(await emitter.request<Object?>('progress.Today', []));
 }
@@ -2103,6 +2119,7 @@ class Settings {
     required this.showProgress,
     required this.dailyGoalKind,
     required this.dailyGoal,
+    required this.restDaysPerWeek,
     required this.goalSuggestionShown,
   });
 
@@ -2140,6 +2157,7 @@ class Settings {
       showProgress: m['showProgress'] as bool,
       dailyGoalKind: m['dailyGoalKind'] as String,
       dailyGoal: m['dailyGoal'] as int,
+      restDaysPerWeek: m['restDaysPerWeek'] as int,
       goalSuggestionShown: m['goalSuggestionShown'] as bool,
     );
   }
@@ -2260,6 +2278,10 @@ class Settings {
 
   final int dailyGoal;
 
+  /// RestDaysPerWeek is how many days without study, 0 to 2, a streak
+  /// survives in any 7 days in a row.
+  final int restDaysPerWeek;
+
   /// GoalSuggestionShown records that the user opened or dismissed the
   /// one-time suggestion to set a daily goal.
   final bool goalSuggestionShown;
@@ -2296,11 +2318,12 @@ class Settings {
     'showProgress': showProgress,
     'dailyGoalKind': dailyGoalKind,
     'dailyGoal': dailyGoal,
+    'restDaysPerWeek': restDaysPerWeek,
     'goalSuggestionShown': goalSuggestionShown,
   };
 
   @override
-  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, goalSuggestionShown: $goalSuggestionShown)';
+  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown)';
 }
 
 /// UndoInfo names the steps Undo and Redo act on, e.g. "Delete 3 notes";
@@ -6622,6 +6645,61 @@ class RetentionCount {
   String toString() => 'RetentionCount(passed: $passed, failed: $failed, retention: $retention)';
 }
 
+/// AchievementStatus is how far an achievement is.
+class AchievementStatus {
+  const AchievementStatus({
+    required this.id,
+    required this.tiers,
+    required this.tierNames,
+    required this.progress,
+    required this.earned,
+    required this.needsGoal,
+  });
+
+  factory AchievementStatus.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return AchievementStatus(
+      id: m['id'] as String,
+      tiers: (m['tiers'] as List<dynamic>?)?.map((x0) => x0 as int).toList() ?? const <int>[],
+      tierNames: (m['tierNames'] as List<dynamic>?)?.map((x0) => x0 as String).toList() ?? const <String>[],
+      progress: m['progress'] as int,
+      earned: (m['earned'] as List<dynamic>?)?.map((x0) => x0 as String).toList() ?? const <String>[],
+      needsGoal: m['needsGoal'] as bool,
+    );
+  }
+
+  final String id;
+
+  /// Tiers are the thresholds and TierNames their names (see
+  /// Achievement.TierNames).
+  final List<int> tiers;
+
+  final List<String> tierNames;
+
+  /// Progress is the count toward the tiers: answers, days or cards.
+  final int progress;
+
+  /// Earned are the dates ("2006-01-02") of the study days the tiers were
+  /// reached on, for the tiers reached so far.
+  final List<String> earned;
+
+  /// NeedsGoal reports the Daily goal achievement while no daily goal is
+  /// set: it makes no progress.
+  final bool needsGoal;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'tiers': tiers,
+    'tierNames': tierNames,
+    'progress': progress,
+    'earned': earned,
+    'needsGoal': needsGoal,
+  };
+
+  @override
+  String toString() => 'AchievementStatus(id: $id, tiers: $tiers, tierNames: $tierNames, progress: $progress, earned: $earned, needsGoal: $needsGoal)';
+}
+
 /// Progress is the streak and today's progress toward the daily goal.
 class Progress {
   const Progress({
@@ -6634,6 +6712,7 @@ class Progress {
     required this.goalKind,
     required this.goal,
     required this.goalReached,
+    required this.newAchievements,
   });
 
   factory Progress.fromJson(Object? json) {
@@ -6648,12 +6727,14 @@ class Progress {
       goalKind: m['goalKind'] as String,
       goal: m['goal'] as int,
       goalReached: m['goalReached'] as bool,
+      newAchievements: (m['newAchievements'] as List<dynamic>?)?.map((x0) => NewAchievement.fromJson(x0)).toList() ?? const <NewAchievement>[],
     );
   }
 
   /// Current is the current streak in days: the consecutive study days
   /// ending today, or yesterday when today has no answers yet, which
-  /// AtRisk then reports (with a streak of at least one day).
+  /// AtRisk then reports (with a streak of at least one day). Rest days
+  /// per week let it go on over days without study.
   final int current;
 
   final bool atRisk;
@@ -6677,6 +6758,11 @@ class Progress {
 
   final bool goalReached;
 
+  /// NewAchievements are the earned achievement tiers this device has not
+  /// shown yet, in the order of the achievements; MarkSeen records them
+  /// as shown.
+  final List<NewAchievement> newAchievements;
+
   Map<String, Object?> toJson() => {
     'current': current,
     'atRisk': atRisk,
@@ -6687,10 +6773,52 @@ class Progress {
     'goalKind': goalKind,
     'goal': goal,
     'goalReached': goalReached,
+    'newAchievements': [for (final x0 in newAchievements) x0.toJson()],
   };
 
   @override
-  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached)';
+  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached, newAchievements: $newAchievements)';
+}
+
+/// NewAchievement is an earned achievement tier not shown yet.
+class NewAchievement {
+  const NewAchievement({
+    required this.id,
+    required this.threshold,
+    required this.tierName,
+    required this.key,
+  });
+
+  factory NewAchievement.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return NewAchievement(
+      id: m['id'] as String,
+      threshold: m['threshold'] as int,
+      tierName: m['tierName'] as String,
+      key: m['key'] as String,
+    );
+  }
+
+  /// ID is the achievement's, Threshold the tier's and TierName its name
+  /// (see stats.AchievementStatus).
+  final String id;
+
+  final int threshold;
+
+  final String tierName;
+
+  /// Key is what MarkSeen takes.
+  final String key;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'threshold': threshold,
+    'tierName': tierName,
+    'key': key,
+  };
+
+  @override
+  String toString() => 'NewAchievement(id: $id, threshold: $threshold, tierName: $tierName, key: $key)';
 }
 
 /// McpActivity is a change an agent made: the name of its undo step (a

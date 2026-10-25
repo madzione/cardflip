@@ -32,12 +32,13 @@ func TestSettingsClassified(t *testing.T) {
 func TestWithSyncedSettings(t *testing.T) {
 	ahead := 5
 	src := DefaultSettings()
-	src.RolloverHour, src.LearnAheadMinutes, src.FlagNames[2] = 6, &ahead, "Check"
+	src.RolloverHour, src.LearnAheadMinutes, src.FlagNames[2], src.RestDaysPerWeek = 6, &ahead, "Check", 1
 	src.Theme, src.Language, src.UIScale, src.LastDeckID = ThemeDark, "de", 150, 7
 	dst := DefaultSettings()
 	dst.Theme, dst.Language = ThemeLight, "en"
 	got := withSyncedSettings(dst, src)
-	if got.RolloverHour != 6 || got.LearnAheadMinutes == nil || *got.LearnAheadMinutes != 5 || got.FlagNames[2] != "Check" {
+	if got.RolloverHour != 6 || got.LearnAheadMinutes == nil || *got.LearnAheadMinutes != 5 || got.FlagNames[2] != "Check" ||
+		got.RestDaysPerWeek != 1 {
 		t.Fatalf("synced fields not copied: %+v", got)
 	}
 	if got.Theme != ThemeLight || got.Language != "en" || got.UIScale != 0 || got.LastDeckID != 0 {

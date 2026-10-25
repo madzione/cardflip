@@ -452,6 +452,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String goRestDaysRange(int max) {
+    return 'Die Ruhetage pro Woche müssen zwischen 0 und $max liegen.';
+  }
+
+  @override
   String goDayCountRange(int max) {
     return 'Die Anzahl der Tage muss zwischen 1 und $max liegen.';
   }
@@ -4081,6 +4086,257 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get dailyGoalHelp =>
       'Jeder Lerntag hält deine Serie, ob du das Ziel erreichst oder nicht.';
+
+  @override
+  String get restDaysPerWeek => 'Ruhetage pro Woche';
+
+  @override
+  String get restDaysPerWeekHelp =>
+      'Tage ohne Lernen, die eine Serie in beliebigen 7 Tagen nicht unterbrechen.';
+
+  @override
+  String get achievements => 'Erfolge';
+
+  @override
+  String get achievementAnswers => 'Antworten';
+
+  @override
+  String get achievementStreak => 'Serie';
+
+  @override
+  String get achievementStudyDays => 'Lerntage';
+
+  @override
+  String get achievementDailyGoal => 'Tagesziel';
+
+  @override
+  String get achievementLongTerm => 'Langzeitgedächtnis';
+
+  @override
+  String get achievementComeback => 'Comeback';
+
+  @override
+  String get tierBronze => 'Bronze';
+
+  @override
+  String get tierSilver => 'Silber';
+
+  @override
+  String get tierGold => 'Gold';
+
+  @override
+  String get tierPlatinum => 'Platin';
+
+  @override
+  String tierAnswers(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Antworten',
+      one: '1 Antwort',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tierDays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tierGoalDays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tagen',
+      one: '1 Tag',
+    );
+    return 'an $_temp0 erreicht';
+  }
+
+  @override
+  String tierCards(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Karten',
+      one: '1 Karte',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tierOneTime => 'Einmalig';
+
+  @override
+  String tierWithThreshold(String tier, String threshold) {
+    return '$tier · $threshold';
+  }
+
+  @override
+  String achievementEarnedOn(String date) {
+    return 'Erreicht am $date';
+  }
+
+  @override
+  String achievementProgress(int progress, int next) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String progressString = progressNumberFormat.format(progress);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return '$progressString / $nextString';
+  }
+
+  @override
+  String get achievementAllEarned => 'Alle Stufen erreicht';
+
+  @override
+  String get achievementNeedsGoal => 'Lege ein Tagesziel fest, um zu beginnen';
+
+  @override
+  String get achievementComebackHint =>
+      'Lerne wieder nach 14 oder mehr Tagen ohne Lernen';
+
+  @override
+  String achievementLocked(String name) {
+    return '$name, noch nicht erreicht';
+  }
+
+  @override
+  String achievementEarned(String name, String tier) {
+    return '$name, $tier';
+  }
+
+  @override
+  String newAnswers(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Antworten',
+      one: '1 Antwort',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newStreak(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return 'Serie von $countString Tagen';
+  }
+
+  @override
+  String newStudyDays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Lerntage',
+      one: '1 Lerntag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newDailyGoal(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tagen',
+      one: '1 Tag',
+    );
+    return 'Tagesziel an $_temp0 erreicht';
+  }
+
+  @override
+  String newLongTerm(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Karten',
+      one: '1 Karte',
+    );
+    return '$_temp0 im Langzeitgedächtnis';
+  }
+
+  @override
+  String newAchievementsLine(String names) {
+    return 'Neu: $names';
+  }
+
+  @override
+  String newAchievementsCountLine(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return 'Neu: $countString Erfolge';
+  }
+
+  @override
+  String newAchievement(String name) {
+    return 'Neuer Erfolg: $name';
+  }
+
+  @override
+  String newAchievements(String names) {
+    return 'Neue Erfolge: $names';
+  }
+
+  @override
+  String achievementsFromHistory(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return '$countString Erfolge aus deinem Verlauf';
+  }
+
+  @override
+  String get showAchievements => 'Ansehen';
 
   @override
   String get review => 'Abfrage';

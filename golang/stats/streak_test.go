@@ -43,7 +43,61 @@ func TestStreaks(t *testing.T) {
 		{"equal runs report the latest", append(dayRange(today-10, today-8), dayRange(today-3, today-1)...),
 			StreakStats{Current: 3, AtRisk: true, Longest: 3, LongestFirst: today - 3, LongestLast: today - 1}},
 	} {
-		if got := Streaks(tc.days, today); got != tc.want {
+		if got := Streaks(tc.days, today, 0); got != tc.want {
+			t.Errorf("%s: %+v\nwant %+v", tc.name, got, tc.want)
+		}
+	}
+}
+
+// without returns days without the days skip.
+func without(days []int, skip ...int) []int {
+	return slices.DeleteFunc(slices.Clone(days), func(d int) bool { return slices.Contains(skip, d) })
+}
+
+func TestStreaksWithRestDays(t *testing.T) {
+	const today = 20000
+	for _, tc := range []struct {
+		name string
+		rest int
+		days []int
+		want StreakStats
+	}{
+		{"no rest days: a skip breaks", 0, without(dayRange(today-9, today), today-4),
+			StreakStats{Current: 4, TodayStudied: true, Longest: 5, LongestFirst: today - 9, LongestLast: today - 5}},
+		// One rest day (spec): the last 10 days except 4 days ago.
+		{"one rest day", 1, without(dayRange(today-9, today), today-4),
+			StreakStats{Current: 9, TodayStudied: true, Longest: 9, LongestFirst: today - 9, LongestLast: today}},
+		// Too many rest days (spec): two skips within a week; the streak
+		// restarts after the second.
+		{"two skips in one window", 1, without(dayRange(today-8, today), today-5, today-2),
+			StreakStats{Current: 2, TodayStudied: true, Longest: 5, LongestFirst: today - 8, LongestLast: today - 3}},
+		{"two rest days allow two skips", 2, without(dayRange(today-8, today), today-5, today-2),
+			StreakStats{Current: 7, TodayStudied: true, Longest: 7, LongestFirst: today - 8, LongestLast: today}},
+		{"two rest days, three skips in one window", 2, without(dayRange(today-9, today), today-7, today-5, today-3),
+			StreakStats{Current: 3, TodayStudied: true, Longest: 4, LongestFirst: today - 9, LongestLast: today - 4}},
+		{"skips a week apart", 1, without(dayRange(today-10, today), today-8, today-1),
+			StreakStats{Current: 9, TodayStudied: true, Longest: 9, LongestFirst: today - 10, LongestLast: today}},
+		{"skips six days apart", 1, without(dayRange(today-10, today), today-7, today-1),
+			StreakStats{Current: 1, TodayStudied: true, Longest: 8, LongestFirst: today - 10, LongestLast: today - 2}},
+		{"two days off in a row with one rest day", 1, append(dayRange(today-6, today-3), today),
+			StreakStats{Current: 1, TodayStudied: true, Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
+		// Skips at the streak's edges: after the first study day, and
+		// yesterday with today not studied yet.
+		{"skip after the first day", 1, append([]int{today - 5}, dayRange(today-3, today)...),
+			StreakStats{Current: 5, TodayStudied: true, Longest: 5, LongestFirst: today - 5, LongestLast: today}},
+		{"yesterday skipped, at risk today", 1, dayRange(today-6, today-2),
+			StreakStats{Current: 5, AtRisk: true, Longest: 5, LongestFirst: today - 6, LongestLast: today - 2}},
+		{"yesterday skipped, rest day already used", 1, without(dayRange(today-6, today-2), today-4),
+			StreakStats{Longest: 4, LongestFirst: today - 6, LongestLast: today - 2}},
+		{"two days skipped, at risk with two rest days", 2, dayRange(today-6, today-3),
+			StreakStats{Current: 4, AtRisk: true, Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
+		{"two days skipped, broken with one rest day", 1, dayRange(today-6, today-3),
+			StreakStats{Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
+		// Applied to history (spec): the longest streak counts rest days.
+		{"longest streak with a rest day", 1, append(without(dayRange(today-30, today-20), today-25), today),
+			StreakStats{Current: 1, TodayStudied: true, Longest: 10, LongestFirst: today - 30, LongestLast: today - 20}},
+	} {
+		if got := Streaks(tc.days, today, tc.rest); got != tc.want {
 			t.Errorf("%s: %+v\nwant %+v", tc.name, got, tc.want)
 		}
 	}
@@ -83,7 +137,7 @@ func TestStudyDaysAcrossDST(t *testing.T) {
 				t.Fatalf("%s at %02d:30: %d answers on %d study days: %v", change.Format(time.DateOnly), hour, len(times), len(days), days)
 			}
 			today := scheduler.DayNumber(times[len(times)-1], 4)
-			if s := Streaks(days, today); s.Current != len(times) || !s.TodayStudied {
+			if s := Streaks(days, today, 0); s.Current != len(times) || !s.TodayStudied {
 				t.Fatalf("%s at %02d:30: streak %+v, want %d days", change.Format(time.DateOnly), hour, s, len(times))
 			}
 		}

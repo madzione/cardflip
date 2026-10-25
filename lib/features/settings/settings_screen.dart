@@ -13,6 +13,7 @@ import 'package:cardflip/app/licenses.dart';
 import 'package:cardflip/app/shortcuts.dart';
 import 'package:cardflip/app/theme.dart';
 import 'package:cardflip/data/scope.dart';
+import 'package:cardflip/data/settings_model.dart' show maxRestDaysPerWeek;
 import 'package:cardflip/features/export/export_dialog.dart';
 import 'package:cardflip/features/import/import_screen.dart';
 import 'package:cardflip/features/profiles/profile_list_screen.dart';
@@ -412,6 +413,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 dailyGoalLabel(l, settings.dailyGoalKind, settings.dailyGoal),
               ),
               onTap: () => editDailyGoal(context),
+            ),
+            _ChoiceTile(
+              title: Text(l.restDaysPerWeek),
+              subtitle: Text(l.restDaysPerWeekHelp),
+              control: DropdownButton<int>(
+                key: const Key('rest-days'),
+                value: settings.restDaysPerWeek,
+                items: [
+                  for (var n = 0; n <= maxRestDaysPerWeek; n++)
+                    DropdownMenuItem(value: n, child: Text('$n')),
+                ],
+                onChanged: (n) {
+                  if (n != null) settings.setRestDaysPerWeek(n);
+                },
+              ),
             ),
             _Section(l.review),
             SwitchListTile(

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	gosync "sync"
 	"testing"
@@ -247,7 +248,7 @@ func TestSyncStreaks(t *testing.T) {
 	syncNow(t, laptop)
 	samePicture(t, "after studying", laptop, phone)
 	lp, pp := must(laptop.progress.Today()), must(phone.progress.Today())
-	if lp != pp {
+	if !reflect.DeepEqual(lp, pp) {
 		t.Fatalf("laptop %+v, phone %+v", lp, pp)
 	}
 	if lp.Current != 2 || !lp.TodayStudied || lp.Longest != 2 || lp.TodayCards != 3 {
@@ -257,5 +258,64 @@ func TestSyncStreaks(t *testing.T) {
 	pd := must(must(phone.a.collection()).StudyDays(core.DefaultRolloverHour, time.Local))
 	if fmt.Sprint(ld.Days) != fmt.Sprint(pd.Days) || len(ld.Days) != 2 {
 		t.Fatalf("study days: laptop %v, phone %v", ld.Days, pd.Days)
+	}
+}
+
+// One device earns a tier: each device tells about it once (spec: earned
+// on another device; achievements shown per device).
+func TestSyncAchievements(t *testing.T) {
+	laptop, phone := newE2EDevice(t, "Laptop"), newE2EDevice(t, "Phone")
+	link(t, laptop, phone)
+	for _, d := range []*e2eDevice{laptop, phone} {
+		if p := must(d.progress.Today()); len(p.NewAchievements) != 0 { // the first evaluation
+			t.Fatalf("%s: %+v", d.name, p.NewAchievements)
+		}
+	}
+	// 99 answers yesterday on the phone, then the 100th today.
+	c := must(phone.a.collection())
+	yesterday := scheduler.DayStart(c.Now(), core.DefaultRolloverHour).Add(-12 * time.Hour)
+	var history []core.ImportReview
+	for i := range 99 {
+		history = append(history, core.ImportReview{Time: yesterday.Add(time.Duration(i) * time.Second), Rating: scheduler.Good,
+			StateBefore: scheduler.Review, IvlBefore: 1, IvlAfter: 1, DurationMs: 1000})
+	}
+	basic, _ := c.BasicNoteType()
+	if _, err := c.Import(&core.ImportBatch{
+		NoteTypes: []core.ImportNoteType{{Key: "basic", ExistingID: basic}},
+		Notes: []core.ImportNote{{TypeKey: "basic", GUID: "old", DeckName: "Default", Fields: []string{"old", "a"},
+			Cards: []core.ImportCard{{DeckName: "Default", History: history,
+				State: scheduler.CardState{State: scheduler.Review, Due: c.Now().AddDate(0, 0, 5), ScheduledDays: 5}}}}},
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	phone.studyNew(t, 1)
+	shows := func(d *e2eDevice) []string {
+		t.Helper()
+		var keys []string
+		for _, a := range must(d.progress.Today()).NewAchievements {
+			keys = append(keys, a.Key)
+		}
+		check(t, d.progress.MarkSeen(keys))
+		return keys
+	}
+	if got := shows(phone); fmt.Sprint(got) != "[answers:100]" {
+		t.Fatalf("phone: %v", got)
+	}
+	syncNow(t, phone)
+	syncNow(t, laptop)
+	if got := shows(laptop); fmt.Sprint(got) != "[answers:100]" {
+		t.Fatalf("laptop after syncing: %v", got)
+	}
+	date := must(laptop.progress.Achievements())[0].Earned
+	if want := must(phone.progress.Achievements())[0].Earned; fmt.Sprint(date) != fmt.Sprint(want) || len(date) != 1 {
+		t.Fatalf("earned: laptop %v, phone %v", date, want)
+	}
+	// Shown once: neither device tells again after another sync.
+	syncNow(t, laptop)
+	syncNow(t, phone)
+	for _, d := range []*e2eDevice{laptop, phone} {
+		if got := shows(d); len(got) != 0 {
+			t.Fatalf("%s again: %v", d.name, got)
+		}
 	}
 }

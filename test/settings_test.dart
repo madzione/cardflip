@@ -551,6 +551,40 @@ void main() {
       );
     });
 
+    testWidgets('rest days save and the header follows', (tester) async {
+      // Rest days per week (progress spec): 0 by default; the deck list
+      // header shows the streak Go computes with them.
+      final go = FakeGo()..progress = progressJson(current: 4, cards: 3);
+      await pumpApp(tester, size: desktop);
+      final header = find.byKey(const Key('progress-header'));
+      expect(
+        find.descendant(of: header, matching: find.text('4 days')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Settings').last);
+      await tester.pumpAndSettle();
+      final rest = find.byKey(const Key('rest-days'));
+      await scrollTo(tester, rest);
+      expect(tester.widget<DropdownButton<int>>(rest).value, 0);
+      await tester.tap(rest);
+      await tester.pumpAndSettle();
+      go.progress = progressJson(current: 10, cards: 3);
+      await tester.tap(find.text('1').last);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetRestDaysPerWeek'), [
+        [1],
+      ]);
+      expect(go.settings['restDaysPerWeek'], 1);
+      expect(tester.widget<DropdownButton<int>>(rest).value, 1);
+      go.emitChange(kind: 'settings', settings: true);
+      await tester.tap(find.text('Decks').last);
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(of: header, matching: find.text('10 days')),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('hiding removes the deck list header', (tester) async {
       // Hidden (spec).
       final go = FakeGo()..progress = progressJson(current: 12, cards: 3);

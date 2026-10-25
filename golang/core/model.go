@@ -683,12 +683,20 @@ type Settings struct {
 	// DailyGoal is the number of cards or minutes.
 	DailyGoalKind string `json:"dailyGoalKind,omitempty"`
 	DailyGoal     int    `json:"dailyGoal,omitempty"`
+	// RestDaysPerWeek is how many days without study, from 0 to
+	// MaxRestDaysPerWeek, a streak survives in any 7 days in a row.
+	RestDaysPerWeek int `json:"restDaysPerWeek,omitempty"`
 	// HideProgress hides the streak and goal on the deck list and the study
 	// summary; stored inverted so that they show by default.
 	HideProgress bool `json:"hideProgress,omitempty"`
 	// GoalSuggestionShown records the one-time suggestion to set a daily
 	// goal.
 	GoalSuggestionShown bool `json:"goalSuggestion,omitempty"`
+	// SeenAchievements are the earned achievement tiers this device has
+	// told the user about ("<id>:<threshold>"). Nil until achievements
+	// were first evaluated, when everything earned until then is marked
+	// seen; it is saved even when empty to tell the two apart.
+	SeenAchievements []string `json:"seenAchievements"`
 }
 
 // UI size limits and default, in percent. The size changes in steps of
@@ -715,6 +723,9 @@ const (
 
 // MaxDailyGoal is the largest daily goal, in cards or minutes.
 const MaxDailyGoal = 9999
+
+// MaxRestDaysPerWeek is the most rest days per week a streak can allow.
+const MaxRestDaysPerWeek = 2
 
 // MaxRecentDecks is how many recently studied decks Settings.RecentDecks
 // keeps.

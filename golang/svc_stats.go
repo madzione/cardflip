@@ -42,8 +42,9 @@ func (s *StatsService) Today(scope stats.Scope, period string) (stats.TodayStats
 	return section(s, scope, period, stats.TodaySummary)
 }
 
-// Streaks are the current and longest streak of the scope, its study days
-// in the period and, with a daily goal, the days of the period that met it.
+// Streaks are the current and longest streak of the scope, with the rest
+// days per week, its study days in the period and, with a daily goal, the
+// days of the period that met it.
 func (s *StatsService) Streaks(scope stats.Scope, period string) (stats.StreakSection, error) {
 	d, err := s.data(scope, period)
 	if err != nil {
@@ -53,7 +54,8 @@ func (s *StatsService) Streaks(scope stats.Scope, period string) (stats.StreakSe
 	if err != nil {
 		return stats.StreakSection{}, err
 	}
-	return stats.StreakSummary(d, goalOf(c.Settings()), period), nil
+	st := c.Settings()
+	return stats.StreakSummary(d, goalOf(st), st.RestDaysPerWeek, period), nil
 }
 
 // goalOf returns the daily goal of st.

@@ -184,6 +184,7 @@ final goMessages =
       'relearningStepsTooMany': (l, a) =>
           l.goRelearningStepsTooMany(int.parse(a[0])),
       'reservedFieldName': (l, a) => l.goReservedFieldName(a[0], a[1]),
+      'restDaysRange': (l, a) => l.goRestDaysRange(int.parse(a[0])),
       'reviewsPerDayRange': (l, a) => l.goReviewsPerDayRange,
       'rolloverHourRange': (l, a) => l.goRolloverHourRange,
       'sameNoteType': (l, a) => l.goSameNoteType,

@@ -423,6 +423,7 @@ class FakeGo {
     'showProgress': true,
     'dailyGoalKind': '',
     'dailyGoal': 0,
+    'restDaysPerWeek': 0,
     'goalSuggestionShown': false,
   };
 
@@ -685,8 +686,15 @@ class FakeGo {
   Map<String, Object?> stats = statsJson();
 
   /// What `progress.Today` answers, see [progressJson]; while null it
-  /// fails, so the deck list shows no streak.
+  /// fails, so the deck list shows no streak. Like Go, `progress.MarkSeen`
+  /// takes the tiers it marks out of its `newAchievements`.
   Map<String, Object?>? progress;
+
+  /// What `progress.Achievements` answers, see [achievementJson]; by
+  /// default every achievement is locked without progress.
+  List<Map<String, Object?>> achievements = [
+    for (final id in achievementTiers.keys) achievementJson(id),
+  ];
   Map<String, Completer<void>> statsGates = {};
   Map<String, String> statsErrors = {};
 
@@ -1197,6 +1205,28 @@ class FakeGo {
     });
     handle('app.SetShowProgress', (args) {
       settings = {...settings, 'showProgress': args[0]};
+      return null;
+    });
+    handle('progress.Achievements', (_) => achievements);
+    handle('progress.MarkSeen', (args) {
+      final keys = List<String>.from(args[0] as List);
+      if (progress case final p?) {
+        progress = {
+          ...p,
+          'newAchievements': [
+            for (final a in p['newAchievements'] as List? ?? const [])
+              if (!keys.contains((a as Map)['key'])) a,
+          ],
+        };
+      }
+      return null;
+    });
+    handle('app.SetRestDaysPerWeek', (args) {
+      final n = args[0] as int;
+      if (n < 0 || n > 2) {
+        throw 'The rest days per week must be between 0 and 2.';
+      }
+      settings = {...settings, 'restDaysPerWeek': n};
       return null;
     });
     handle('app.SetDailyGoal', (args) {
@@ -2514,7 +2544,9 @@ Map<String, Object?> progressJson({
   String goalKind = '',
   int goal = 0,
   int? longest,
+  List<Map<String, Object?>> newAchievements = const [],
 }) => {
+  'newAchievements': newAchievements,
   'current': current,
   'atRisk': current > 0 && cards == 0,
   'todayStudied': cards > 0,
@@ -2529,6 +2561,52 @@ Map<String, Object?> progressJson({
     _ => false,
   },
 };
+
+/// The tiers of each achievement, as Go defines them.
+const achievementTiers = {
+  'answers': [100, 1000, 10000, 100000],
+  'streak': [7, 30, 100, 365],
+  'study-days': [30, 100, 365, 1000],
+  'daily-goal': [7, 30, 100],
+  'long-term': [100, 1000, 5000],
+  'comeback': [1],
+};
+
+/// JSON for one entry of `progress.Achievements`: achievement [id] with
+/// [progress] and the dates its first tiers were [earned] ("2006-01-02").
+Map<String, Object?> achievementJson(
+  String id, {
+  int progress = 0,
+  List<String> earned = const [],
+  bool needsGoal = false,
+}) {
+  final tiers = achievementTiers[id]!;
+  return {
+    'id': id,
+    'tiers': tiers,
+    'tierNames': tiers.length == 1
+        ? ['gold']
+        : ['bronze', 'silver', 'gold', 'platinum'].sublist(0, tiers.length),
+    'progress': progress,
+    'earned': earned,
+    'needsGoal': needsGoal,
+  };
+}
+
+/// JSON for a tier of `Progress.newAchievements`: achievement [id]'s tier
+/// of [threshold].
+Map<String, Object?> newAchievementJson(String id, int threshold) {
+  final tiers = achievementTiers[id]!;
+  final i = tiers.indexOf(threshold);
+  return {
+    'id': id,
+    'threshold': threshold,
+    'tierName': tiers.length == 1
+        ? 'gold'
+        : ['bronze', 'silver', 'gold', 'platinum'][i],
+    'key': '$id:$threshold',
+  };
+}
 
 /// JSON for the Streaks section: a 9-day streak, a 41-day longest streak,
 /// 24 of 30 study days, and [goalDays] days that met the goal (null without

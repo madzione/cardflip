@@ -668,7 +668,8 @@ func TestGoalSettings(t *testing.T) {
 	s, _ := opened(t)
 	// Defaults, also in collections without the fields: no goal, streaks
 	// shown.
-	if st := must(s.app.Settings()); !st.ShowProgress || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.GoalSuggestionShown {
+	if st := must(s.app.Settings()); !st.ShowProgress || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.RestDaysPerWeek != 0 ||
+		st.GoalSuggestionShown {
 		t.Fatalf("default settings = %+v", st)
 	}
 	for _, bad := range []struct {
@@ -688,16 +689,22 @@ func TestGoalSettings(t *testing.T) {
 	if st := must(s.app.Settings()); st.DailyGoal != 0 {
 		t.Fatalf("no goal with a value: %+v", st)
 	}
+	for _, bad := range []int{-1, 3} {
+		if err := s.app.SetRestDaysPerWeek(bad); !core.IsUserError(err) {
+			t.Fatalf("%d rest days: err = %v", bad, err)
+		}
+	}
 	check(t, s.app.SetShowProgress(false))
 	check(t, s.app.GoalSuggestionShown())
-	// Persisted in backups (spec): a goal of 30 cards survives a restore on
-	// another installation.
+	// Persisted in backups (spec): a goal of 30 cards and 2 rest days per
+	// week survive a restore on another installation.
 	check(t, s.app.SetDailyGoal("cards", 30))
+	check(t, s.app.SetRestDaysPerWeek(2))
 	file := must(s.transfer.ExportBackup())
 	other, _ := opened(t)
 	info := must(other.transfer.StageBytes(file.Name, file.Data))
 	check(t, other.transfer.Restore(info.ID))
-	if st := must(other.app.Settings()); st.DailyGoalKind != "cards" || st.DailyGoal != 30 {
+	if st := must(other.app.Settings()); st.DailyGoalKind != "cards" || st.DailyGoal != 30 || st.RestDaysPerWeek != 2 {
 		t.Fatalf("settings after restore = %+v", st)
 	}
 }

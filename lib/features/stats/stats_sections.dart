@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:cardflip/data/scope.dart';
+import 'package:cardflip/features/progress/achievements_screen.dart';
 import 'package:cardflip/features/study/study_screen.dart' show ratingNames;
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/time_format.dart';
@@ -73,7 +75,7 @@ enum StatsSection {
   /// The section's content for [data], as [load] returned it.
   Widget content(Object data) => switch (this) {
     today => TodayView(data as golang.TodayStats),
-    streaks => StatLines(streakLines(data as golang.StreakSection)),
+    streaks => StreaksView(data as golang.StreakSection),
     futureDue => FutureDueView(data as golang.Forecast),
     calendar => CalendarView(data as golang.Calendar),
     reviews => ReviewHistoryView(data as golang.ReviewHistory),
@@ -288,6 +290,40 @@ class CalendarView extends StatelessWidget {
         const SizedBox(height: 8),
         StatLines(calendarLines(c)),
       ],
+    );
+  }
+}
+
+/// The Streaks section: its lines and, while streaks and goals are shown,
+/// a link to the achievements.
+class StreaksView extends StatelessWidget {
+  const StreaksView(this.streaks, {super.key});
+
+  final golang.StreakSection streaks;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = StatLines(streakLines(streaks));
+    final settings = AppScope.maybeRead(context)?.settings;
+    if (settings == null) return lines;
+    return ListenableBuilder(
+      listenable: settings,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          lines,
+          if (settings.showProgress)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const Key('streaks-achievements'),
+                icon: const Icon(Icons.emoji_events_outlined),
+                label: Text(context.l10n.achievements),
+                onPressed: () => showAchievements(context),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

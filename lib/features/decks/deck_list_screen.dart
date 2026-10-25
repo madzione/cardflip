@@ -10,6 +10,8 @@ import 'package:cardflip/data/scope.dart';
 import 'package:cardflip/features/editor/note_editor_screen.dart';
 import 'package:cardflip/features/export/export_dialog.dart';
 import 'package:cardflip/features/import/import_screen.dart';
+import 'package:cardflip/features/progress/achievements_screen.dart';
+import 'package:cardflip/features/progress/new_achievement_notice.dart';
 import 'package:cardflip/features/stats/stats_screen.dart';
 import 'package:cardflip/features/study/study_screen.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
@@ -71,78 +73,103 @@ class DeckListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final model = AppScope.of(context).deckList;
+    final settings = AppScope.of(context).settings;
     final l = context.l10n;
-    // Shown as icons, or in the menu where the app bar is narrow.
-    final more = [
-      (
-        l.statistics,
-        Icons.bar_chart,
-        () => showStats(context, collectionScope),
-      ),
-      (
-        l.createDeck,
-        Icons.create_new_folder_outlined,
-        () => _createDeck(context),
-      ),
-      (
-        l.createFilteredDeck,
-        Icons.filter_alt_outlined,
-        () => createFilteredDeck(context, search: defaultFilterSearch(context)),
-      ),
-    ];
     final narrow = narrowScreen(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: _Title(profiles: AppScope.of(context).profiles),
-        actions: [
-          const SyncIndicator(),
-          IconButton(
-            tooltip: withShortcut(l.studyDeck, pickDeckShortcutLabel),
-            icon: const Icon(Icons.manage_search),
-            onPressed: () => AdaptiveScaffold.pickDeck(context),
-          ),
-          if (!narrow)
-            for (final (label, icon, action) in more)
-              IconButton(tooltip: label, icon: Icon(icon), onPressed: action),
-          UndoMenuButton(
-            actions: [
-              if (narrow)
-                for (final (label, _, action) in more) (label, action),
-            ],
-          ),
-        ],
-      ),
-      body: ListenableBuilder(
-        listenable: model,
-        builder: (context, _) {
-          if (model.loading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (model.error != null) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(errorMessage(model.error!)),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: model.load,
-                    child: Text(context.l10n.tryAgain),
+    return NewAchievementNotice(
+      child: Scaffold(
+        appBar: AppBar(
+          title: _Title(profiles: AppScope.of(context).profiles),
+          actions: [
+            const SyncIndicator(),
+            IconButton(
+              tooltip: withShortcut(l.studyDeck, pickDeckShortcutLabel),
+              icon: const Icon(Icons.manage_search),
+              onPressed: () => AdaptiveScaffold.pickDeck(context),
+            ),
+            // The menu has Achievements while streaks and goals are shown.
+            ListenableBuilder(
+              listenable: settings,
+              builder: (context, _) {
+                // Shown as icons, or in the menu where the app bar is narrow.
+                final more = [
+                  (
+                    l.statistics,
+                    Icons.bar_chart,
+                    () => showStats(context, collectionScope),
                   ),
-                ],
-              ),
+                  (
+                    l.createDeck,
+                    Icons.create_new_folder_outlined,
+                    () => _createDeck(context),
+                  ),
+                  (
+                    l.createFilteredDeck,
+                    Icons.filter_alt_outlined,
+                    () => createFilteredDeck(
+                      context,
+                      search: defaultFilterSearch(context),
+                    ),
+                  ),
+                ];
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!narrow)
+                      for (final (label, icon, action) in more)
+                        IconButton(
+                          tooltip: label,
+                          icon: Icon(icon),
+                          onPressed: action,
+                        ),
+                    UndoMenuButton(
+                      actions: [
+                        if (narrow)
+                          for (final (label, _, action) in more)
+                            (label, action),
+                        // Always in the menu, to keep the app bar narrow.
+                        if (settings.showProgress)
+                          (l.achievements, () => showAchievements(context)),
+                      ],
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+        body: ListenableBuilder(
+          listenable: model,
+          builder: (context, _) {
+            if (model.loading) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (model.error != null) {
+              return Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(errorMessage(model.error!)),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: model.load,
+                      child: Text(context.l10n.tryAgain),
+                    ),
+                  ],
+                ),
+              );
+            }
+            final empty = model.decks.every((d) => d.depth > 0 || d.cards == 0);
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                const ProgressHeader(),
+                for (final deck in model.visible) DeckRow(deck: deck),
+                if (empty) const _EmptyHint(),
+              ],
             );
-          }
-          final empty = model.decks.every((d) => d.depth > 0 || d.cards == 0);
-          return ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              const ProgressHeader(),
-              for (final deck in model.visible) DeckRow(deck: deck),
-              if (empty) const _EmptyHint(),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
