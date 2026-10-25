@@ -388,7 +388,7 @@ Settings' About section SHALL offer "Open-source licenses", which opens a page t
 - **THEN** the entry reads "Open-Source-Lizenzen" and the page's own labels are German
 
 ### Requirement: Licenses page contents
-The licenses page SHALL list Cardflip itself with the GNU GPL version 3 text; the code taken from other projects (fsrs-rs, the Anki Image Occlusion template, fluffy) with their licenses; every Dart and Flutter package, including the Flutter engine; every Go module linked into the app, and the Go standard library; and, on the platforms where the app bundles them, libmpv and FFmpeg.
+The licenses page SHALL list Cardflip itself with the GNU GPL version 3 text; the code taken from other projects (fsrs-rs, the Anki Image Occlusion template, fluffy) with their licenses; every Dart and Flutter package, including the Flutter engine; every Go module linked into the app, and the Go standard library; and, on the platforms and in the packages where the app bundles them, libmpv and FFmpeg.
 
 #### Scenario: Cardflip and ported code
 - **WHEN** the user opens the licenses page
@@ -409,6 +409,10 @@ The licenses page SHALL list Cardflip itself with the GNU GPL version 3 text; th
 #### Scenario: Media libraries on Linux
 - **WHEN** the user opens the licenses page in the Linux app, which uses the system's libmpv
 - **THEN** libmpv and FFmpeg are not listed
+
+#### Scenario: Media libraries in the AppImage
+- **WHEN** the user opens the licenses page in the Linux app started from the AppImage, which bundles libmpv
+- **THEN** it lists libmpv and FFmpeg with the GNU GPL version 3 text, the versions bundled and where their source is published
 
 ### Requirement: Licenses list kept current
 The list of Go module licenses SHALL match the modules the app links on every platform. The verification gates SHALL fail when a module is added, removed or updated without the list being regenerated, or when a linked module has no license file.

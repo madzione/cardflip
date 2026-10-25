@@ -62,7 +62,8 @@ distributed build must carry their license texts.
   by tests and are not part of the app.
 - **libmpv and FFmpeg**, for audio and video. `media_kit_libs_video`
   bundles builds of them with the app on Windows, macOS, iOS and Android;
-  on Linux Cardflip uses the system's libmpv. The bundled builds are LGPL
+  on Linux Cardflip uses the system's libmpv, except in the AppImage (see
+  below). The bundled builds are LGPL
   builds: libmpv is built with `-Dgpl=false` and is licensed under the GNU
   LGPL version 2.1 or later (see
   [LICENSES/LGPL-2.1.txt](LICENSES/LGPL-2.1.txt)), and FFmpeg is built with
@@ -75,6 +76,15 @@ distributed build must carry their license texts.
   [Windows](https://github.com/media-kit/libmpv-win32-video-build),
   [Android](https://github.com/media-kit/libmpv-android-video-build),
   [macOS and iOS](https://github.com/media-kit/libmpv-darwin-build).
+- **The AppImage's libraries.** The Linux AppImage bundles libmpv and
+  FFmpeg, with the libraries they need that desktop systems don't provide,
+  from the distribution packages of the system it is built on. Distribution
+  builds of them are licensed under the GNU GPL version 2 or later or the
+  GNU LGPL, depending on the distribution, and the AppImage passes them on
+  under the GNU GPL version 3 (see [LICENSE](LICENSE)). The AppImage lists
+  every bundled library with its package and version in
+  `usr/share/doc/cardflip/bundled-libraries.txt` and on the licenses page;
+  their source is the distribution's source package of that version.
 
 ## Names
 

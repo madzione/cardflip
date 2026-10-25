@@ -3,6 +3,10 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'environment_io.dart'
+    if (dart.library.js_interop) 'environment_web.dart'
+    as platform;
+
 /// The project's public repository, which "Source code" opens.
 const repositoryUrl = 'https://github.com/madzione/cardflip';
 
@@ -46,7 +50,7 @@ const _portedCode = [
 
 /// The repositories with the source and build scripts of the libmpv and
 /// FFmpeg builds media_kit bundles, by platform. Linux uses the system's
-/// libmpv, the web the browser's media element.
+/// libmpv, except in the AppImage, the web the browser's media element.
 const _mediaBuilds = {
   TargetPlatform.windows:
       'https://github.com/media-kit/libmpv-win32-video-build',
@@ -55,6 +59,23 @@ const _mediaBuilds = {
   TargetPlatform.macOS: 'https://github.com/media-kit/libmpv-darwin-build',
   TargetPlatform.iOS: 'https://github.com/media-kit/libmpv-darwin-build',
 };
+
+/// The environment the app was started with; tests replace it.
+@visibleForTesting
+Map<String, String> Function() environment = () => platform.environment;
+
+/// The AppImage's folder while the Linux app runs from one, which bundles
+/// libmpv and FFmpeg from the distribution it was built on. The AppImage
+/// runtime sets both variables.
+String? _appImageDir() {
+  if (kIsWeb || defaultTargetPlatform != TargetPlatform.linux) return null;
+  final env = environment();
+  final dir = env['APPDIR'];
+  if ((env['APPIMAGE'] ?? '').isEmpty || dir == null || dir.isEmpty) {
+    return null;
+  }
+  return dir;
+}
 
 /// Not cached: the texts are read only while the license page is open.
 Future<String> _asset(String key) => rootBundle.loadString(key, cache: false);
@@ -71,6 +92,27 @@ Stream<LicenseEntry> _licenses() async* {
     yield LicenseEntryWithLineBreaks([
       m['module'] as String,
     ], m['license'] as String);
+  }
+
+  final appImage = _appImageDir();
+  if (appImage != null) {
+    // Distribution builds are GPL version 2 or later, or LGPL, depending on
+    // the distribution; either can be passed on under the GPL version 3.
+    final bundled = await platform.readText(
+      '$appImage/usr/share/doc/cardflip/bundled-libraries.txt',
+    );
+    final gpl = await _asset('LICENSE');
+    for (final library in const ['libmpv', 'FFmpeg']) {
+      yield LicenseEntryWithLineBreaks(
+        [library],
+        'The $library bundled with Cardflip in this AppImage is taken from '
+        'the distribution packages of the system the AppImage was built on, '
+        'listed below, and is passed on under the GNU General Public '
+        "License, version 3. Its source is the distribution's source "
+        'package of the version listed.\n\n'
+        '${bundled ?? 'The list of bundled libraries is missing.'}\n\n$gpl',
+      );
+    }
   }
 
   final build = kIsWeb ? null : _mediaBuilds[defaultTargetPlatform];

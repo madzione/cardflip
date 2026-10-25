@@ -1,0 +1,13 @@
+#!/bin/sh
+# AppImage entry point. The bundle finds its data/ and lib/ next to the
+# executable, so no LD_LIBRARY_PATH is set: it would reach the programs
+# Cardflip starts (ffmpeg, parecord, spd-say) and make them load the bundled
+# libraries.
+#
+# media_kit opens libmpv by name, trying libmpv.so first, which can be the
+# system's when mpv is installed: a second libmpv next to the bundled one the
+# video plugin links, and mpv aborts when the two share a player. It opens
+# LIBMPV_LIBRARY_PATH instead, which only media_kit reads.
+LIBMPV_LIBRARY_PATH="$APPDIR/usr/lib/cardflip/lib/libmpv.so.2"
+export LIBMPV_LIBRARY_PATH
+exec "$APPDIR/usr/lib/cardflip/cardflip" "$@"

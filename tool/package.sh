@@ -6,13 +6,15 @@
 #     tool/package.sh --no-check web     skip tool/check.sh before building
 #
 # Targets, and the host each one builds on:
-#     linux       Linux     tarball of the bundle with install.sh, desktop entry and icons
-#     apk         any       one APK per ABI
-#     appbundle   any       Android App Bundle for Google Play
-#     web         any       tarball of the site for a static web server
-#     windows     Windows   zip of the app folder (run from Git Bash)
-#     macos       macOS     disk image with the app
-#     ios         macOS     .ipa
+#     linux               Linux     tarball of the bundle with install.sh, desktop entry and icons
+#     appimage            Linux     AppImage with libmpv and the libraries it needs
+#     apk                 any       one APK per ABI
+#     appbundle           any       Android App Bundle for Google Play
+#     web                 any       tarball of the site for a static web server
+#     windows             Windows   zip of the app folder (run from Git Bash)
+#     windows-installer   Windows   setup executable made with Inno Setup (run from Git Bash)
+#     macos               macOS     disk image with the app
+#     ios                 macOS     .ipa
 #
 # The version is the vX.Y.Z tag on HEAD, else the version in pubspec.yaml with
 # "-dev.<commit>" added to the file names. The build number is the number of
@@ -24,6 +26,13 @@
 #     MACOS_SIGN_IDENTITY     "Developer ID Application: …" to sign the macOS app
 #     MACOS_NOTARY_PROFILE    notarytool keychain profile to notarize the disk image
 #     IOS_EXPORT_OPTIONS      ExportOptions.plist for the .ipa export
+#
+# Packaging tools, looked up on PATH unless set:
+#     ISCC                    Inno Setup 6's ISCC.exe, for windows-installer (also
+#                             found in its default install folders)
+#     LINUXDEPLOY             linuxdeploy, for appimage
+#     APPIMAGETOOL            appimagetool, for appimage
+#     PATCHELF                patchelf, for appimage
 #
 # WEB_BASE_HREF sets the base href when the web app isn't served from /.
 set -euo pipefail
@@ -43,7 +52,7 @@ for arg in "$@"; do
   case "$arg" in
     --no-check) run_check=0 ;;
     -h | --help) usage; exit 0 ;;
-    linux | apk | appbundle | web | windows | macos | ios) targets+=("$arg") ;;
+    linux | appimage | apk | appbundle | web | windows | windows-installer | macos | ios) targets+=("$arg") ;;
     *) die "unknown target or option: $arg (see --help)" ;;
   esac
 done
@@ -64,6 +73,36 @@ case "$(uname -m)" in
   *) arch="$(uname -m)" ;;
 esac
 
+# The first of the environment variable $1 and the commands $2… that exists.
+find_tool() {
+  local var="$1" cmd
+  shift
+  if [[ -n "${!var:-}" ]]; then
+    command -v "${!var}" 2>/dev/null
+    return
+  fi
+  for cmd in "$@"; do
+    if command -v "$cmd" 2>/dev/null; then
+      return
+    fi
+  done
+  return 1
+}
+
+# ISCC, else Inno Setup 6 on PATH or in its machine-wide or per-user (winget)
+# install folder.
+find_iscc() {
+  find_tool ISCC iscc ISCC.exe && return
+  local dir
+  for dir in "$(printenv 'ProgramFiles(x86)' || true)" "${LOCALAPPDATA:+$LOCALAPPDATA/Programs}"; do
+    if [[ -n "$dir" && -f "$(cygpath -u "$dir")/Inno Setup 6/ISCC.exe" ]]; then
+      echo "$(cygpath -u "$dir")/Inno Setup 6/ISCC.exe"
+      return
+    fi
+  done
+  return 1
+}
+
 # Fail before building anything when a target can't be packaged here.
 for target in "${targets[@]}"; do
   case "$target" in
@@ -71,6 +110,23 @@ for target in "${targets[@]}"; do
       [[ "$host" == "$target" ]] || die "$target packages only build on $target, not on $(uname -s)." ;;
     ios)
       [[ "$host" == macos ]] || die "ios packages only build on macOS, not on $(uname -s)." ;;
+    appimage)
+      [[ "$host" == linux ]] || die "AppImages only build on Linux, not on $(uname -s)."
+      case "$arch" in
+        x64) appimage_arch=x86_64 ;;
+        arm64) appimage_arch=aarch64 ;;
+        *) die "AppImages don't build on $arch." ;;
+      esac
+      linuxdeploy="$(find_tool LINUXDEPLOY linuxdeploy "linuxdeploy-$appimage_arch.AppImage")" ||
+        die "linuxdeploy not found; put it on PATH or set LINUXDEPLOY (see BUILDING.md)."
+      appimagetool="$(find_tool APPIMAGETOOL appimagetool "appimagetool-$appimage_arch.AppImage")" ||
+        die "appimagetool not found; put it on PATH or set APPIMAGETOOL (see BUILDING.md)."
+      patchelf="$(find_tool PATCHELF patchelf)" ||
+        die "patchelf not found; put it on PATH or set PATCHELF (see BUILDING.md)." ;;
+    windows-installer)
+      [[ "$host" == windows ]] || die "windows-installer packages only build on Windows, not on $(uname -s)."
+      iscc="$(find_iscc)" ||
+        die "Inno Setup 6 (ISCC.exe) not found; install it (winget install JRSoftware.InnoSetup) or set ISCC." ;;
     apk | appbundle)
       if [[ ! -f "$root/android/key.properties" ]]; then
         if [[ "${ALLOW_DEBUG_SIGNING:-}" == 1 ]]; then
@@ -114,14 +170,117 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$dist"
 
+# The Linux and Windows builds run once per invocation, however many packages
+# of the platform are requested.
+linux_built=""
+build_linux() {
+  if [[ -z "$linux_built" ]]; then
+    fluffy build linux "${build_flags[@]}"
+    linux_built=1
+  fi
+}
+
 package_linux() {
-  fluffy build linux "${build_flags[@]}"
+  build_linux
   local stage="$work/$name-linux-$arch"
   mkdir -p "$stage"
   cp -r "$root/build/linux/$arch/release/bundle" "$stage/bundle"
   cp -r "$root/linux/packaging" "$stage/packaging"
+  rm "$stage/packaging/AppRun" # only for the AppImage
   cp "$root/tool/install_linux.sh" "$stage/install.sh"
   tar -C "$work" -czf "$dist/$name-linux-$arch.tar.gz" "$name-linux-$arch"
+}
+
+# Libraries libmpv needs that must match the host's drivers and sound
+# daemons, beyond those linuxdeploy never bundles; and GTK and GLib, which
+# the app takes from the host.
+appimage_excludes=(
+  'libva*' 'libvdpau*' 'libvulkan*' 'libdrm*' 'libgbm*' 'libwayland-*' 'libxkbcommon*'
+  'libpulse*' 'libpipewire*' 'libasound*' 'libjack*'
+  'libgtk-*' 'libgdk-*' 'libglib-2.0*' 'libgobject-2.0*' 'libgio-2.0*' 'libgmodule-2.0*'
+)
+
+# The distribution package and version that installed the file $1, or
+# "unknown".
+owning_package() {
+  local file="$1" pkg f
+  [[ -n "$file" ]] || { echo unknown; return; }
+  if command -v dpkg-query >/dev/null; then
+    # dpkg records /lib paths on merged-/usr systems that ldd reports as /usr/lib.
+    for f in "$file" "${file#/usr}"; do
+      if pkg="$(dpkg-query -S "$f" 2>/dev/null)"; then
+        pkg="${pkg%%:*}"
+        echo "$pkg $(dpkg-query -W -f '${Version}' "$pkg")"
+        return
+      fi
+    done
+  elif command -v rpm >/dev/null && pkg="$(rpm -qf --qf '%{NAME} %{VERSION}-%{RELEASE}\n' "$file" 2>/dev/null)"; then
+    echo "$pkg"
+    return
+  elif command -v pacman >/dev/null && pkg="$(pacman -Qqo "$file" 2>/dev/null)"; then
+    pacman -Q "$pkg"
+    return
+  fi
+  echo unknown
+}
+
+package_appimage() {
+  build_linux
+  local appdir="$work/$name-linux-$arch.AppDir"
+  local app="$appdir/usr/lib/cardflip"
+  local packaging="$root/linux/packaging"
+  local app_id=dev.cardflip.cardflip
+  mkdir -p "$appdir/usr/lib" "$appdir/usr/share/icons" "$appdir/usr/share/doc/cardflip"
+  cp -r "$root/build/linux/$arch/release/bundle" "$app"
+  cp "$packaging/AppRun" "$appdir/AppRun"
+  cp "$packaging/$app_id.desktop" "$appdir/"
+  cp "$packaging/icons/hicolor/256x256/apps/$app_id.png" "$appdir/$app_id.png"
+  ln -s "$app_id.png" "$appdir/.DirIcon"
+  cp -r "$packaging/icons/hicolor" "$appdir/usr/share/icons/"
+
+  # The plugins carry the build tree's RUNPATH; $ORIGIN makes them find
+  # libmpv and the other bundled libraries next to them.
+  local plugin
+  for plugin in "$app"/lib/lib*_plugin.so; do
+    "$patchelf" --set-rpath '$ORIGIN' "$plugin"
+  done
+
+  # libmpv and the libraries it needs that desktop systems don't provide,
+  # resolved on this host and moved next to the plugin that links it.
+  local libmpv
+  libmpv="$(ldd "$app/lib/libmedia_kit_video_plugin.so" | awk '$1 == "libmpv.so.2" { print $3 }')"
+  [[ -f "$libmpv" ]] || die "libmpv.so.2 not found; install libmpv (mpv 0.35 or newer)."
+  local deps="$work/appimage-deps" exclude_flags=() pattern
+  for pattern in "${appimage_excludes[@]}"; do
+    exclude_flags+=(--exclude-library "$pattern")
+  done
+  "$linuxdeploy" --appdir "$deps" --library "$libmpv" "${exclude_flags[@]}"
+  local -A host_paths=([libmpv.so.2]="$libmpv")
+  local soname path
+  while read -r soname path; do
+    host_paths[$soname]="$path"
+  done < <(ldd "$libmpv" | awk '$2 == "=>" && $3 ~ /^\// { print $1, $3 }')
+
+  # Which package each bundled library came from, for its license entry.
+  local list="$appdir/usr/share/doc/cardflip/bundled-libraries.txt" lib file
+  {
+    echo "Libraries bundled in this AppImage, copied from the distribution packages"
+    echo "of the system it was built on. The source of each is the distribution's"
+    echo "source package of the version listed."
+    echo
+    echo "Distribution: $(. /etc/os-release && echo "${PRETTY_NAME:-$NAME}")"
+    echo
+  } >"$list"
+  for lib in "$deps"/usr/lib/*.so*; do
+    file="$(basename "$lib")"
+    [[ ! -e "$app/lib/$file" ]] || die "$file is in the Flutter bundle already."
+    mv "$lib" "$app/lib/"
+    echo "$file  $(owning_package "${host_paths[$file]:-}")" >>"$list"
+  done
+  cp "$root/LICENSE" "$appdir/usr/share/doc/cardflip/"
+
+  ARCH="$appimage_arch" "$appimagetool" "$appdir" "$dist/$name-linux-$arch.AppImage"
+  echo "Built against $(getconf GNU_LIBC_VERSION); the AppImage needs that glibc or newer."
 }
 
 package_apk() {
@@ -147,8 +306,19 @@ package_web() {
   tar -C "$work" -czf "$dist/$name-web.tar.gz" "$name-web"
 }
 
-package_windows() {
-  fluffy build windows "${build_flags[@]}"
+windows_built=""
+build_windows() {
+  if [[ -z "$windows_built" ]]; then
+    fluffy build windows "${build_flags[@]}"
+    windows_built=1
+  fi
+}
+
+# Stages the app folder once into $windows_stage, for the zip and the
+# installer alike.
+windows_stage=""
+stage_windows() {
+  [[ -z "$windows_stage" ]] || return 0
   local stage="$work/$name-windows-$arch"
   cp -r "$root/build/windows/$arch/runner/Release" "$stage"
   # The Visual C++ runtime, so the app starts on machines without the
@@ -159,10 +329,30 @@ package_windows() {
     if [[ -f "$system32/$dll" ]]; then
       cp "$system32/$dll" "$stage/"
     else
-      warn "$dll not found in $system32; the zip needs the Visual C++ redistributable to run."
+      warn "$dll not found in $system32; the app needs the Visual C++ redistributable to run."
     fi
   done
-  powershell.exe -NoProfile -Command "Compress-Archive -Force -Path '$(cygpath -w "$stage")' -DestinationPath '$(cygpath -w "$dist/$name-windows-$arch.zip")'"
+  windows_stage="$stage"
+}
+
+package_windows() {
+  build_windows
+  stage_windows
+  powershell.exe -NoProfile -Command "Compress-Archive -Force -Path '$(cygpath -w "$windows_stage")' -DestinationPath '$(cygpath -w "$dist/$name-windows-$arch.zip")'"
+}
+
+package_windows_installer() {
+  build_windows
+  stage_windows
+  # Options with "-" rather than "/", which Git Bash would rewrite as paths.
+  "$iscc" -Qp \
+    "-DAppVersion=$version" \
+    "-DFileVersion=$version.$build_number" \
+    "-DArch=$arch" \
+    "-DSourceDir=$(cygpath -w "$windows_stage")" \
+    "-DOutputDir=$(cygpath -w "$dist")" \
+    "-DOutputBaseFilename=$name-windows-$arch-setup" \
+    "$(cygpath -w "$root/windows/packaging/cardflip.iss")"
 }
 
 package_macos() {
@@ -215,7 +405,7 @@ fi
 
 for target in "${targets[@]}"; do
   step "package $target ($version$suffix, build $build_number)"
-  "package_$target"
+  "package_${target//-/_}"
 done
 
 step "checksums"

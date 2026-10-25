@@ -84,24 +84,54 @@ versioned packages and a `SHA256SUMS` into `dist/`:
 
 ```sh
 tool/package.sh linux apk web     # on Linux
-tool/package.sh windows           # on Windows, from Git Bash
+tool/package.sh appimage          # on Linux, see "AppImage" below
+tool/package.sh windows windows-installer   # on Windows, from Git Bash
 tool/package.sh macos ios         # on a Mac
 ```
 
 | Target | Package |
 |---|---|
 | `linux` | `cardflip-<v>-linux-<arch>.tar.gz`: the bundle, the desktop entry and icons, and `install.sh` (the same script as `tool/install_linux.sh`) |
+| `appimage` | `cardflip-<v>-linux-<arch>.AppImage`, with libmpv and the libraries it needs, so audio and video play without mpv installed |
 | `apk` | `cardflip-<v>-android-<abi>.apk`, one per ABI |
 | `appbundle` | `cardflip-<v>-android.aab` for Google Play |
 | `web` | `cardflip-<v>-web.tar.gz`; the server must send `.wasm` as `application/wasm`. Set `WEB_BASE_HREF` when the app isn't served from `/` |
 | `windows` | `cardflip-<v>-windows-<arch>.zip`, with the Visual C++ runtime DLLs |
+| `windows-installer` | `cardflip-<v>-windows-<arch>-setup.exe`: installs the same files per user (or for all users), with a Start menu entry, an optional desktop shortcut and an uninstaller |
 | `macos` | `cardflip-<v>-macos.dmg` |
 | `ios` | `cardflip-<v>-ios.ipa` |
 
 The version is taken from a `vX.Y.Z` tag on the current commit. Without
 one, the version in `pubspec.yaml` is used and the file names get
 `-dev.<commit>`. The build number is the number of commits. `VERSION` and
-`BUILD_NUMBER` override both. `--no-check` skips `tool/check.sh`.
+`BUILD_NUMBER` override both. `--no-check` skips `tool/check.sh`. Both
+Linux packages, and both Windows packages, come from one build when
+requested together.
+
+**Windows installer.** `windows-installer` needs
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) (`winget install
+JRSoftware.InnoSetup`). `tool/package.sh` finds `ISCC.exe` on `PATH` or in
+Inno Setup's install folder; `ISCC` sets its path. The script is
+`windows/packaging/cardflip.iss`; never change its `AppId`, or newer
+installers stop upgrading earlier installs. The installer is unsigned, so
+SmartScreen warns about it like about the zip.
+
+**AppImage.** `appimage` needs
+[linuxdeploy](https://github.com/linuxdeploy/linuxdeploy),
+[appimagetool](https://github.com/AppImage/appimagetool) and `patchelf` on
+`PATH` (the upstream `linuxdeploy-<arch>.AppImage` and
+`appimagetool-<arch>.AppImage` file names work too), or their paths in
+`LINUXDEPLOY`, `APPIMAGETOOL` and `PATCHELF`. Where FUSE isn't available,
+as in most containers, set `APPIMAGE_EXTRACT_AND_RUN=1` so the two tools run
+without it. The AppImage bundles the build host's libmpv (mpv 0.35 or newer)
+and needs a glibc at least as new as the build host's, which
+`tool/package.sh` prints; build releases on Ubuntu 24.04 (or in an Ubuntu
+24.04 container), the oldest common base with `libmpv2`. GTK, glibc, the
+graphics drivers and the sound server's client libraries come from the
+user's system. The bundled libraries and their package versions are listed
+in the AppImage's `usr/share/doc/cardflip/bundled-libraries.txt`; for a
+release, the source packages of those versions must stay available (the
+distribution's archive keeps them) or be published with the release.
 
 **Android signing.** Release builds are signed with the key in
 `android/key.properties` (never commit it or the keystore):
