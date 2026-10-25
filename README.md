@@ -13,6 +13,10 @@ Linux, Windows, macOS, Android, iOS and the web.
 
 - **Learns with you.** Reviews are scheduled with FSRS, a modern
   spaced-repetition algorithm.
+- **Keeps you going.** A quiet streak counts the days in a row you studied,
+  and an optional daily goal of cards or minutes shows how far you are
+  today. Both come from your review history, so imports and other devices
+  count too, and you can turn them off.
 - **Brings your cards along.** Import CSV/TSV text files, Anki decks
   (`.apkg`) and Anki collections (`.colpkg`), including their templates,
   styling, images, audio and video.

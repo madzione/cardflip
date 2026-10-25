@@ -36,7 +36,7 @@ After a backup is restored, a collection package is imported or a new collection
 - **THEN** the user is asked whether to merge or which side to replace, and nothing is changed before the answer
 
 ### Requirement: What is synced
-Sync SHALL carry decks, deck descriptions and limits, presets with their options, note types, notes, cards with their scheduling state, flags, suspension and burying, filtered decks, the review history, deletions of all of these, media files, and the collection settings that affect studying and card content. It SHALL NOT carry device settings.
+Sync SHALL carry decks, deck descriptions and limits, presets with their options, note types, notes, cards with their scheduling state, flags, suspension and burying, filtered decks, the review history, deletions of all of these, media files, and the collection settings that affect studying and card content, including the daily goal. It SHALL NOT carry device settings, including whether streaks and goals are shown.
 
 #### Scenario: Synced study settings
 - **WHEN** the user changes the rollover hour to 6 on the laptop and syncs
@@ -45,6 +45,14 @@ Sync SHALL carry decks, deck descriptions and limits, presets with their options
 #### Scenario: Device settings stay
 - **WHEN** the laptop uses dark mode and German, the phone uses light mode and English, and they sync
 - **THEN** each keeps its own theme, language, UI size, last-used deck and note type, and MCP settings
+
+#### Scenario: Daily goal synced
+- **WHEN** the user sets a daily goal of 30 cards on the laptop and syncs
+- **THEN** the phone shows progress toward 30 cards
+
+#### Scenario: Visibility stays
+- **WHEN** the user turns off *Show streaks and goals* on the phone and syncs
+- **THEN** the laptop still shows streaks and goals
 
 ### Requirement: Changes on both sides are combined
 When both devices changed a collection since their last sync, sync SHALL keep the changes of both. For one object changed on both, such as the same note, the later change SHALL win. A card's scheduling SHALL be merged separately from its flag, suspension and deck.

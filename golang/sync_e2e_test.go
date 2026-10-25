@@ -9,23 +9,26 @@ import (
 	"strings"
 	gosync "sync"
 	"testing"
+	"time"
 
 	"cardflip/golang/core"
+	"cardflip/golang/scheduler"
 	"cardflip/golang/storage"
 )
 
 // e2eDevice is a whole app on its own data directory, with real storage.
 type e2eDevice struct {
-	name  string
-	a     *app
-	app   *AppService
-	notes *NotesService
-	study *StudyService
-	decks *DecksService
-	media *MediaService
-	sync  *SyncService
-	mu    gosync.Mutex
-	asked int // first-sync questions
+	name     string
+	a        *app
+	app      *AppService
+	notes    *NotesService
+	study    *StudyService
+	decks    *DecksService
+	media    *MediaService
+	sync     *SyncService
+	progress *ProgressService
+	mu       gosync.Mutex
+	asked    int // first-sync questions
 }
 
 // e2eUI is a user who accepts pairing, confirms codes and merges.
@@ -43,10 +46,17 @@ func (u *e2eUI) ChooseFirstSync(ctx context.Context, l LinkInfo) (string, error)
 
 func newE2EDevice(t *testing.T, name string) *e2eDevice {
 	t.Helper()
+	return newE2EDeviceAt(t, name, time.Now)
+}
+
+// newE2EDeviceAt is newE2EDevice with the clock now.
+func newE2EDeviceAt(t *testing.T, name string, now func() time.Time) *e2eDevice {
+	t.Helper()
 	a := newApp()
+	a.now = now
 	a.backups.tick = 0
 	d := &e2eDevice{name: name, a: a, app: &AppService{a: a}, notes: &NotesService{a: a}, study: &StudyService{a: a},
-		decks: &DecksService{a: a}, media: &MediaService{a: a}}
+		decks: &DecksService{a: a}, media: &MediaService{a: a}, progress: &ProgressService{a: a}}
 	ui := &e2eUI{fakeSyncUI: fakeSyncUI{accept: true, confirm: func(context.Context, string) bool { return true }}, d: d}
 	d.sync = newSyncService(a, ui)
 	if _, err := d.app.Open(t.TempDir()); err != nil {
@@ -128,17 +138,8 @@ func TestSyncEndToEnd(t *testing.T) {
 	dog := must(phone.media.Add("dog.png", []byte("woof")))
 	phone.addNote(t, fmt.Sprintf(`cuatro <img src="%s">`, dog))
 
-	check(t, phone.sync.StartPairing())
-	check(t, laptop.sync.PairWith(context.Background(), "127.0.0.1", phone.sync.Status().Port))
-	phone.sync.StopPairing()
-	laptop.sync.Seen(phone.sync.Status().DeviceID, "Phone", "127.0.0.1", phone.sync.Status().Port, false)
-	phone.sync.Seen(laptop.sync.Status().DeviceID, "Laptop", "127.0.0.1", laptop.sync.Status().Port, false)
-	if _, err := laptop.sync.Link(context.Background(), phone.sync.Status().DeviceID, storage.DefaultProfile); err != nil {
-		t.Fatal(err)
-	}
-
 	// Merge.
-	syncNow(t, laptop)
+	link(t, laptop, phone)
 	if laptop.asked != 1 {
 		t.Fatalf("asked %d times", laptop.asked)
 	}
@@ -184,5 +185,77 @@ func TestSyncEndToEnd(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(p), []byte("tres")) {
 		t.Fatal("the laptop's note is gone")
+	}
+}
+
+// link pairs and links two devices' default profiles and merges them.
+func link(t *testing.T, laptop, phone *e2eDevice) {
+	t.Helper()
+	check(t, phone.sync.StartPairing())
+	check(t, laptop.sync.PairWith(context.Background(), "127.0.0.1", phone.sync.Status().Port))
+	phone.sync.StopPairing()
+	laptop.sync.Seen(phone.sync.Status().DeviceID, "Phone", "127.0.0.1", phone.sync.Status().Port, false)
+	phone.sync.Seen(laptop.sync.Status().DeviceID, "Laptop", "127.0.0.1", laptop.sync.Status().Port, false)
+	if _, err := laptop.sync.Link(context.Background(), phone.sync.Status().DeviceID, storage.DefaultProfile); err != nil {
+		t.Fatal(err)
+	}
+	syncNow(t, laptop)
+}
+
+// studyNew adds n notes and answers their cards Good.
+func (d *e2eDevice) studyNew(t *testing.T, n int) {
+	t.Helper()
+	for i := range n {
+		d.addNote(t, fmt.Sprintf("%s %d %d", d.name, d.a.now().UnixNano(), i))
+	}
+	st := must(d.study.Start(must(d.decks.Tree())[0].ID))
+	for range n {
+		if st.Card == nil {
+			t.Fatalf("%s: nothing to study", d.name)
+		}
+		st = must(d.study.Answer(st.Card.CardID, 3, 2000))
+	}
+}
+
+// Two devices (spec): the phone studies yesterday, both study today, and
+// after syncing both report the same study days and streak.
+func TestSyncStreaks(t *testing.T) {
+	var mu gosync.Mutex
+	offset := time.Duration(0)
+	now := func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return time.Now().Add(offset)
+	}
+	laptop, phone := newE2EDeviceAt(t, "Laptop", now), newE2EDeviceAt(t, "Phone", now)
+	link(t, laptop, phone)
+
+	phone.studyNew(t, 2) // yesterday, on the phone only
+	// An hour into the next study day.
+	mu.Lock()
+	t0 := time.Now()
+	offset = scheduler.NextDayStart(t0, core.DefaultRolloverHour).Add(time.Hour).Sub(t0)
+	mu.Unlock()
+	phone.studyNew(t, 1) // today on both
+	laptop.studyNew(t, 2)
+	// The laptop asked before the sync, so its cached days must follow the
+	// synced reviews.
+	if p := must(laptop.progress.Today()); p.Current != 1 || p.TodayCards != 2 {
+		t.Fatalf("laptop before syncing: %+v", p)
+	}
+	syncNow(t, phone)
+	syncNow(t, laptop)
+	samePicture(t, "after studying", laptop, phone)
+	lp, pp := must(laptop.progress.Today()), must(phone.progress.Today())
+	if lp != pp {
+		t.Fatalf("laptop %+v, phone %+v", lp, pp)
+	}
+	if lp.Current != 2 || !lp.TodayStudied || lp.Longest != 2 || lp.TodayCards != 3 {
+		t.Fatalf("after syncing: %+v", lp)
+	}
+	ld := must(must(laptop.a.collection()).StudyDays(core.DefaultRolloverHour, time.Local))
+	pd := must(must(phone.a.collection()).StudyDays(core.DefaultRolloverHour, time.Local))
+	if fmt.Sprint(ld.Days) != fmt.Sprint(pd.Days) || len(ld.Days) != 2 {
+		t.Fatalf("study days: laptop %v, phone %v", ld.Days, pd.Days)
 	}
 }

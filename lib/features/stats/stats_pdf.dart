@@ -106,6 +106,8 @@ List<pw.Widget> _content(StatsSection s, Object data) {
       return [
         for (final l in todayLines(data as golang.TodayStats)) pw.Text(l),
       ];
+    case StatsSection.streaks:
+      return [_lines(streakLines(data as golang.StreakSection))];
     case StatsSection.futureDue:
       final f = data as golang.Forecast;
       return [

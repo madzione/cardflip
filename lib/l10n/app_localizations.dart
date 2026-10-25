@@ -500,6 +500,12 @@ abstract class AppLocalizations {
   /// **'Custom study needs a regular deck; \"{deck}\" is a filtered deck.'**
   String goCustomStudyNeedsRegular(String deck);
 
+  /// A message from Go (code dailyGoalRange).
+  ///
+  /// In en, this message translates to:
+  /// **'The daily goal must be between 1 and {max}.'**
+  String goDailyGoalRange(int max);
+
   /// A message from Go (code dayCountRange).
   ///
   /// In en, this message translates to:
@@ -1987,6 +1993,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unknown custom study choice \"{value}\".'**
   String goUnknownCustomStudy(String value);
+
+  /// A message from Go (code unknownDailyGoal).
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown daily goal \"{value}\".'**
+  String goUnknownDailyGoal(String value);
 
   /// A message from Go (code unknownEasyDaysLevel).
   ///
@@ -4412,6 +4424,84 @@ abstract class AppLocalizations {
   /// **'Session complete'**
   String get sessionComplete;
 
+  /// The current streak on the deck list header, e.g. "12 days".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String streakDaysLabel(int count);
+
+  /// Deck list header when today has no answers yet and the streak is alive.
+  ///
+  /// In en, this message translates to:
+  /// **'Study today to keep your {count}-day streak'**
+  String streakAtRisk(int count);
+
+  /// No description provided for @streakHeaderTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Streaks and daily goal'**
+  String get streakHeaderTooltip;
+
+  /// Today's progress toward a card goal, e.g. "18 / 30 cards".
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {goal, plural, =1{1 card} other{{goal} cards}}'**
+  String goalProgressCards(int done, int goal);
+
+  /// Today's progress toward a minute goal, e.g. "12 / 20 minutes".
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {goal, plural, =1{1 minute} other{{goal} minutes}}'**
+  String goalProgressMinutes(int done, int goal);
+
+  /// Study summary, when this session made today a study day.
+  ///
+  /// In en, this message translates to:
+  /// **'Streak extended to {count, plural, =1{1 day} other{{count} days}}'**
+  String streakExtended(int count);
+
+  /// Study summary.
+  ///
+  /// In en, this message translates to:
+  /// **'Current streak: {count, plural, =1{1 day} other{{count} days}}'**
+  String streakCurrent(int count);
+
+  /// No description provided for @goalReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal reached'**
+  String get goalReached;
+
+  /// Study summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more card} other{{count} more cards}} to reach today\'\'s goal'**
+  String goalCardsLeft(int count);
+
+  /// Study summary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more minute} other{{count} more minutes}} to reach today\'\'s goal'**
+  String goalMinutesLeft(int count);
+
+  /// No description provided for @goalSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'A daily goal shows how far you are each day.'**
+  String get goalSuggestion;
+
+  /// No description provided for @goalSuggestionSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a daily goal'**
+  String get goalSuggestionSet;
+
+  /// No description provided for @goalSuggestionDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'No thanks'**
+  String get goalSuggestionDismiss;
+
   /// {when} is like "at 14:05" or "tomorrow".
   ///
   /// In en, this message translates to:
@@ -4987,6 +5077,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change deck depending on note type'**
   String get deckByNoteType;
+
+  /// Settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Goals and streaks'**
+  String get goalsAndStreaks;
+
+  /// No description provided for @showStreaksAndGoals.
+  ///
+  /// In en, this message translates to:
+  /// **'Show streaks and goals'**
+  String get showStreaksAndGoals;
+
+  /// No description provided for @showStreaksAndGoalsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'On the deck list and after studying. Only on this device.'**
+  String get showStreaksAndGoalsHelp;
+
+  /// No description provided for @dailyGoal.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal'**
+  String get dailyGoal;
+
+  /// No daily goal.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get dailyGoalNone;
+
+  /// A daily goal of a number of cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get dailyGoalCards;
+
+  /// A daily goal of a number of minutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes'**
+  String get dailyGoalMinutes;
+
+  /// No description provided for @dailyGoalCardsPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 card} other{{count} cards}} a day'**
+  String dailyGoalCardsPerDay(int count);
+
+  /// No description provided for @dailyGoalMinutesPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}} a day'**
+  String dailyGoalMinutesPerDay(int count);
+
+  /// No description provided for @dailyGoalCardsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards per day'**
+  String get dailyGoalCardsLabel;
+
+  /// No description provided for @dailyGoalMinutesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes per day'**
+  String get dailyGoalMinutesLabel;
+
+  /// No description provided for @dailyGoalError.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a whole number from 1 to 9999.'**
+  String get dailyGoalError;
+
+  /// No description provided for @dailyGoalHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Studying on any day keeps your streak, whether or not you reach the goal.'**
+  String get dailyGoalHelp;
 
   /// Settings section about the study screen.
   ///
@@ -8747,6 +8915,12 @@ abstract class AppLocalizations {
   /// Statistics section.
   ///
   /// In en, this message translates to:
+  /// **'Streaks'**
+  String get secStreaks;
+
+  /// Statistics section.
+  ///
+  /// In en, this message translates to:
   /// **'Future due'**
   String get secFutureDue;
 
@@ -8946,6 +9120,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Most reviews on one day'**
   String get mostReviewsDay;
+
+  /// No description provided for @currentStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Current streak'**
+  String get currentStreak;
+
+  /// No description provided for @longestStreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Longest streak'**
+  String get longestStreak;
+
+  /// The longest streak with its dates, e.g. "41 days, from Mar 2 to Apr 11"; {days} is like "41 days".
+  ///
+  /// In en, this message translates to:
+  /// **'{days}, from {first} to {last}'**
+  String longestStreakValue(String days, String first, String last);
+
+  /// No description provided for @studyDaysInPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Study days'**
+  String get studyDaysInPeriod;
+
+  /// No description provided for @goalDaysMet.
+  ///
+  /// In en, this message translates to:
+  /// **'Days the goal was met'**
+  String get goalDaysMet;
 
   /// Review time in minutes, e.g. "12 min".
   ///

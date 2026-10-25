@@ -17,6 +17,7 @@ import 'package:cardflip/features/browse/set_due_date_dialog.dart';
 import 'package:cardflip/features/decks/filtered_deck_screen.dart';
 import 'package:cardflip/features/editor/math_insert.dart' show MenuEntryLabel;
 import 'package:cardflip/features/editor/note_editor_screen.dart';
+import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/card_view.dart';
 import 'package:cardflip/widgets/media_player.dart';
@@ -244,9 +245,22 @@ class _StudyScreenState extends State<StudyScreen> {
   bool _renderPending = false;
   bool _syncPending = false;
 
+  /// Whether today was a study day when the session started, so the
+  /// summary can say the streak was extended; null until known.
+  bool? _studiedBefore;
+
   @override
   void initState() {
     super.initState();
+    final progress = AppScope.read(context).progress.progress;
+    if (progress != null) {
+      _studiedBefore = progress.todayStudied;
+    } else if (AppScope.read(context).settings.showProgress) {
+      golang.progress.today().then<void>(
+        (p) => _studiedBefore ??= p.todayStudied,
+        onError: (Object _) {},
+      );
+    }
     _openSessions = AppScope.read(context).openSessions;
     _openSessions.value++;
     _barsHidden = AppScope.read(context).barsHidden;
@@ -1410,9 +1424,14 @@ class _StudyScreenState extends State<StudyScreen> {
     if (card == null) {
       final onContinue = _pending != null ? _continue : null;
       return state.studied == 0
-          ? _NothingDue(state: state, onContinue: onContinue)
+          ? _NothingDue(
+              state: state,
+              studiedBefore: _studiedBefore,
+              onContinue: onContinue,
+            )
           : _Summary(
               state: state,
+              studiedBefore: _studiedBefore,
               onCheck: () => _run(golang.study.current),
               onContinue: onContinue,
             );
@@ -1892,12 +1911,16 @@ class _Message extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.lines,
+    this.extra,
     this.action,
   });
 
   final IconData icon;
   final String title;
   final List<String> lines;
+
+  /// Shown below the lines, such as the streak and goal lines.
+  final Widget? extra;
   final Widget? action;
 
   @override
@@ -1922,6 +1945,7 @@ class _Message extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 6),
                 child: Text(l, textAlign: TextAlign.center),
               ),
+            ?extra,
             if (action != null) ...[const SizedBox(height: 16), action!],
           ],
         ),
@@ -1959,9 +1983,16 @@ class _LearningDueNow extends StatelessWidget {
 }
 
 class _NothingDue extends StatelessWidget {
-  const _NothingDue({required this.state, this.onContinue});
+  const _NothingDue({
+    required this.state,
+    required this.studiedBefore,
+    this.onContinue,
+  });
 
   final golang.StudyState state;
+
+  /// See [_ProgressLines.studiedBefore].
+  final bool? studiedBefore;
 
   /// Set when a learning card became due while waiting.
   final VoidCallback? onContinue;
@@ -1981,6 +2012,7 @@ class _NothingDue extends StatelessWidget {
         else
           context.l10n.deckHasNoCards,
       ],
+      extra: _ProgressLines(studiedBefore: studiedBefore),
       action: OutlinedButton(
         onPressed: () => Navigator.of(context).maybePop(),
         child: Text(context.l10n.backToDecks),
@@ -1990,9 +2022,17 @@ class _NothingDue extends StatelessWidget {
 }
 
 class _Summary extends StatelessWidget {
-  const _Summary({required this.state, required this.onCheck, this.onContinue});
+  const _Summary({
+    required this.state,
+    required this.studiedBefore,
+    required this.onCheck,
+    this.onContinue,
+  });
 
   final golang.StudyState state;
+
+  /// See [_ProgressLines.studiedBefore].
+  final bool? studiedBefore;
   final VoidCallback onCheck;
 
   /// Set when a learning card became due while waiting.
@@ -2016,6 +2056,7 @@ class _Summary extends StatelessWidget {
         studied,
         if (learning != null) l.moreLearningDue(formatDue(learning)),
       ],
+      extra: _ProgressLines(studiedBefore: studiedBefore),
       action: Wrap(
         spacing: 12,
         children: [
@@ -2027,6 +2068,94 @@ class _Summary extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// The streak and goal lines of the summary and nothing-due screens
+/// (progress spec, "Summary progress lines"), and the one-time suggestion
+/// to set a daily goal. Nothing is shown while streaks and goals are off.
+class _ProgressLines extends StatefulWidget {
+  const _ProgressLines({required this.studiedBefore});
+
+  /// Whether today was a study day when the session started: if not and it
+  /// is now, the session extended the streak.
+  final bool? studiedBefore;
+
+  @override
+  State<_ProgressLines> createState() => _ProgressLinesState();
+}
+
+class _ProgressLinesState extends State<_ProgressLines> {
+  @override
+  void initState() {
+    super.initState();
+    // The numbers after the session's last answer.
+    AppScope.read(context).progress.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final app = AppScope.of(context);
+    return ListenableBuilder(
+      listenable: Listenable.merge([app.progress, app.settings]),
+      builder: (context, _) {
+        final settings = app.settings;
+        final p = app.progress.progress;
+        if (!settings.showProgress || p == null) {
+          return const SizedBox.shrink();
+        }
+        final l = context.l10n;
+        final lines = [
+          if (widget.studiedBefore == false && p.todayStudied)
+            l.streakExtended(p.current)
+          else if (p.current > 0)
+            l.streakCurrent(p.current),
+          ?switch (p.goalKind) {
+            _ when p.goalReached => l.goalReached,
+            'cards' => l.goalCardsLeft(p.goal - p.todayCards),
+            'minutes' => l.goalMinutesLeft(p.goal - p.todayMinutes),
+            _ => null,
+          },
+        ];
+        final suggest =
+            settings.dailyGoalKind.isEmpty && !settings.goalSuggestionShown;
+        return Column(
+          key: const Key('progress-lines'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final line in lines)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(line, textAlign: TextAlign.center),
+              ),
+            if (suggest) ...[
+              const SizedBox(height: 8),
+              Text(
+                l.goalSuggestion,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              Wrap(
+                alignment: WrapAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      settings.markGoalSuggestionShown();
+                      editDailyGoal(context);
+                    },
+                    child: Text(l.goalSuggestionSet),
+                  ),
+                  TextButton(
+                    onPressed: settings.markGoalSuggestionShown,
+                    child: Text(l.goalSuggestionDismiss),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

@@ -91,6 +91,11 @@ class GoApp {
   Future<DeletionLogFile> exportDeletionLog() async =>
       DeletionLogFile.fromJson(await emitter.request<Object?>('app.ExportDeletionLog', []));
 
+  /// GoalSuggestionShown records that the user opened or dismissed the
+  /// one-time suggestion to set a daily goal.
+  Future<void> goalSuggestionShown() =>
+      emitter.request<Object?>('app.GoalSuggestionShown', []);
+
   /// LoadProfiles reads the profiles kept in dataDir (empty on the web)
   /// without opening a collection, so that the app can show the profile list
   /// on start; SwitchProfile then opens one. An installation from before
@@ -173,6 +178,11 @@ class GoApp {
   /// app calls it before Open and whenever the interface language changes.
   Future<void> setBuiltinNames(BuiltinNames names) =>
       emitter.request<Object?>('app.SetBuiltinNames', [names.toJson()]);
+
+  /// SetDailyGoal sets the daily goal: kind "cards" or "minutes" with a value
+  /// from 1 to 9,999, or kind "" for no goal (the value is then ignored).
+  Future<void> setDailyGoal(String kind, int value) =>
+      emitter.request<Object?>('app.SetDailyGoal', [kind, value]);
 
   /// SetDeckByNoteType sets whether the add screen picks the deck last used
   /// with the chosen note type instead of the last used deck.
@@ -258,6 +268,11 @@ class GoApp {
   /// start instead of opening the last used profile.
   Future<void> setShowProfilesAtStartup(bool on_) =>
       emitter.request<Object?>('app.SetShowProfilesAtStartup', [on_]);
+
+  /// SetShowProgress sets whether the deck list and the study summary show
+  /// the streak and daily goal. It belongs to the device.
+  Future<void> setShowProgress(bool on_) =>
+      emitter.request<Object?>('app.SetShowProgress', [on_]);
 
   /// SetShowRemainingCounts sets whether the study screen shows the remaining
   /// new, learning and review counts.
@@ -1098,6 +1113,11 @@ class GoStats {
   Future<Histogram> stability(Scope scope, String period) async =>
       Histogram.fromJson(await emitter.request<Object?>('stats.Stability', [scope.toJson(), period]));
 
+  /// Streaks are the current and longest streak of the scope, its study days
+  /// in the period and, with a daily goal, the days of the period that met it.
+  Future<StreakSection> streaks(Scope scope, String period) async =>
+      StreakSection.fromJson(await emitter.request<Object?>('stats.Streaks', [scope.toJson(), period]));
+
   /// Today summarises the current study day.
   Future<TodayStats> today(Scope scope, String period) async =>
       TodayStats.fromJson(await emitter.request<Object?>('stats.Today', [scope.toJson(), period]));
@@ -1105,6 +1125,19 @@ class GoStats {
   /// TrueRetention is the true retention table.
   Future<RetentionTable> trueRetention(Scope scope, String period) async =>
       RetentionTable.fromJson(await emitter.request<Object?>('stats.TrueRetention', [scope.toJson(), period]));
+}
+
+/// The Go channels progress.*: a bound Go type (fluffy.Bind) or the exported functions of a package.
+const progress = GoProgress._();
+
+/// The Go channels progress.*, use them through [progress].
+class GoProgress {
+  const GoProgress._();
+
+  /// Today returns the streak and today's progress. The first call reads
+  /// the whole review log.
+  Future<Progress> today() async =>
+      Progress.fromJson(await emitter.request<Object?>('progress.Today', []));
 }
 
 /// The Go channels mcp.*: a bound Go type (fluffy.Bind) or the exported functions of a package.
@@ -2067,6 +2100,10 @@ class Settings {
     required this.uiScale,
     required this.minimalist,
     required this.reduceMotion,
+    required this.showProgress,
+    required this.dailyGoalKind,
+    required this.dailyGoal,
+    required this.goalSuggestionShown,
   });
 
   factory Settings.fromJson(Object? json) {
@@ -2100,6 +2137,10 @@ class Settings {
       uiScale: m['uiScale'] as int,
       minimalist: m['minimalist'] as bool,
       reduceMotion: m['reduceMotion'] as String,
+      showProgress: m['showProgress'] as bool,
+      dailyGoalKind: m['dailyGoalKind'] as String,
+      dailyGoal: m['dailyGoal'] as int,
+      goalSuggestionShown: m['goalSuggestionShown'] as bool,
     );
   }
 
@@ -2209,6 +2250,20 @@ class Settings {
   /// changes.
   final String reduceMotion;
 
+  /// ShowProgress shows the streak and daily goal on the deck list and the
+  /// study summary ("Show streaks and goals").
+  final bool showProgress;
+
+  /// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
+  /// DailyGoal is the number of cards or minutes.
+  final String dailyGoalKind;
+
+  final int dailyGoal;
+
+  /// GoalSuggestionShown records that the user opened or dismissed the
+  /// one-time suggestion to set a daily goal.
+  final bool goalSuggestionShown;
+
   Map<String, Object?> toJson() => {
     'theme': theme,
     'language': language,
@@ -2238,10 +2293,14 @@ class Settings {
     'uiScale': uiScale,
     'minimalist': minimalist,
     'reduceMotion': reduceMotion,
+    'showProgress': showProgress,
+    'dailyGoalKind': dailyGoalKind,
+    'dailyGoal': dailyGoal,
+    'goalSuggestionShown': goalSuggestionShown,
   };
 
   @override
-  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion)';
+  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, goalSuggestionShown: $goalSuggestionShown)';
 }
 
 /// UndoInfo names the steps Undo and Redo act on, e.g. "Delete 3 notes";
@@ -6331,6 +6390,74 @@ class ReviewBucket {
   String toString() => 'ReviewBucket(start: $start, learning: $learning, young: $young, mature: $mature, relearning: $relearning, filtered: $filtered)';
 }
 
+/// StreakSection is the statistics' Streaks section.
+class StreakSection {
+  const StreakSection({
+    required this.current,
+    required this.atRisk,
+    required this.todayStudied,
+    required this.longest,
+    this.longestFirst,
+    this.longestLast,
+    required this.studyDays,
+    required this.periodDays,
+    this.goalDays,
+  });
+
+  factory StreakSection.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return StreakSection(
+      current: m['current'] as int,
+      atRisk: m['atRisk'] as bool,
+      todayStudied: m['todayStudied'] as bool,
+      longest: m['longest'] as int,
+      longestFirst: m['longestFirst'] as String?,
+      longestLast: m['longestLast'] as String?,
+      studyDays: m['studyDays'] as int,
+      periodDays: m['periodDays'] as int,
+      goalDays: m['goalDays'] as int?,
+    );
+  }
+
+  final int current;
+
+  final bool atRisk;
+
+  final bool todayStudied;
+
+  /// Longest is the longest streak, from LongestFirst to LongestLast
+  /// ("2006-01-02"; empty without study days).
+  final int longest;
+
+  final String? longestFirst;
+
+  final String? longestLast;
+
+  /// StudyDays is the number of study days among the period's PeriodDays.
+  final int studyDays;
+
+  final int periodDays;
+
+  /// GoalDays is the number of days of the period that met the current
+  /// daily goal; nil without a goal.
+  final int? goalDays;
+
+  Map<String, Object?> toJson() => {
+    'current': current,
+    'atRisk': atRisk,
+    'todayStudied': todayStudied,
+    'longest': longest,
+    if (longestFirst case final v0?) 'longestFirst': v0,
+    if (longestLast case final v0?) 'longestLast': v0,
+    'studyDays': studyDays,
+    'periodDays': periodDays,
+    if (goalDays case final v0?) 'goalDays': v0,
+  };
+
+  @override
+  String toString() => 'StreakSection(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, longestFirst: $longestFirst, longestLast: $longestLast, studyDays: $studyDays, periodDays: $periodDays, goalDays: $goalDays)';
+}
+
 /// TodayStats summarises the current study day.
 class TodayStats {
   const TodayStats({
@@ -6495,6 +6622,77 @@ class RetentionCount {
   String toString() => 'RetentionCount(passed: $passed, failed: $failed, retention: $retention)';
 }
 
+/// Progress is the streak and today's progress toward the daily goal.
+class Progress {
+  const Progress({
+    required this.current,
+    required this.atRisk,
+    required this.todayStudied,
+    required this.longest,
+    required this.todayCards,
+    required this.todayMinutes,
+    required this.goalKind,
+    required this.goal,
+    required this.goalReached,
+  });
+
+  factory Progress.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return Progress(
+      current: m['current'] as int,
+      atRisk: m['atRisk'] as bool,
+      todayStudied: m['todayStudied'] as bool,
+      longest: m['longest'] as int,
+      todayCards: m['todayCards'] as int,
+      todayMinutes: m['todayMinutes'] as int,
+      goalKind: m['goalKind'] as String,
+      goal: m['goal'] as int,
+      goalReached: m['goalReached'] as bool,
+    );
+  }
+
+  /// Current is the current streak in days: the consecutive study days
+  /// ending today, or yesterday when today has no answers yet, which
+  /// AtRisk then reports (with a streak of at least one day).
+  final int current;
+
+  final bool atRisk;
+
+  final bool todayStudied;
+
+  final int longest;
+
+  /// TodayCards and TodayMinutes are today's answers and the whole
+  /// minutes spent on them.
+  final int todayCards;
+
+  final int todayMinutes;
+
+  /// GoalKind is "cards" or "minutes", or empty without a daily goal;
+  /// Goal is its number of cards or minutes, GoalReached whether today's
+  /// progress meets it.
+  final String goalKind;
+
+  final int goal;
+
+  final bool goalReached;
+
+  Map<String, Object?> toJson() => {
+    'current': current,
+    'atRisk': atRisk,
+    'todayStudied': todayStudied,
+    'longest': longest,
+    'todayCards': todayCards,
+    'todayMinutes': todayMinutes,
+    'goalKind': goalKind,
+    'goal': goal,
+    'goalReached': goalReached,
+  };
+
+  @override
+  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached)';
+}
+
 /// McpActivity is a change an agent made: the name of its undo step (a
 /// tagged text) and when.
 class McpActivity {
@@ -6616,7 +6814,7 @@ class SyncStatus {
       discovered: (m['discovered'] as List<dynamic>?)?.map((x0) => DiscoveredDevice.fromJson(x0)).toList() ?? const <DiscoveredDevice>[],
       links: (m['links'] as List<dynamic>?)?.map((x0) => LinkInfo.fromJson(x0)).toList() ?? const <LinkInfo>[],
       syncing: m['syncing'] as bool,
-      progress: switch (m['progress']) { final v0? => Progress.fromJson(v0), _ => null },
+      progress: switch (m['progress']) { final v0? => SyncProgress.fromJson(v0), _ => null },
       lastSynced: switch (m['lastSynced']) { final v0? => DateTime.parse(v0 as String), _ => null },
       error: m['error'] as String?,
     );
@@ -6658,7 +6856,7 @@ class SyncStatus {
   /// Syncing is set while the open profile syncs, with Progress.
   final bool syncing;
 
-  final Progress? progress;
+  final SyncProgress? progress;
 
   /// LastSynced is the open profile's last finished sync; Error why the
   /// last one failed (a tagged text), empty if it did not.
@@ -6914,16 +7112,16 @@ class LinkInfo {
 }
 
 /// Progress is how far a session got.
-class Progress {
-  const Progress({
+class SyncProgress {
+  const SyncProgress({
     required this.phase,
     required this.received,
     required this.sent,
   });
 
-  factory Progress.fromJson(Object? json) {
+  factory SyncProgress.fromJson(Object? json) {
     final m = json as Map<String, dynamic>;
-    return Progress(
+    return SyncProgress(
       phase: m['phase'] as String,
       received: m['received'] as int,
       sent: m['sent'] as int,
@@ -6943,7 +7141,7 @@ class Progress {
   };
 
   @override
-  String toString() => 'Progress(phase: $phase, received: $received, sent: $sent)';
+  String toString() => 'SyncProgress(phase: $phase, received: $received, sent: $sent)';
 }
 
 /// SyncSummary is the result of Sync now: how many changes were received

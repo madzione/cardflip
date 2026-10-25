@@ -11,6 +11,7 @@ import 'stats_charts.dart';
 /// The sections of the statistics screen, in screen order.
 enum StatsSection {
   today,
+  streaks,
   futureDue,
   calendar,
   reviews,
@@ -29,6 +30,7 @@ enum StatsSection {
     final l = appL10n;
     return switch (this) {
       today => l.secToday,
+      streaks => l.secStreaks,
       futureDue => l.secFutureDue,
       calendar => l.secCalendar,
       reviews => l.secReviews,
@@ -46,13 +48,14 @@ enum StatsSection {
 
   /// Whether the section depends on the period.
   bool get timeBased => switch (this) {
-    futureDue || reviews || reviewTime || hourly || buttons => true,
+    streaks || futureDue || reviews || reviewTime || hourly || buttons => true,
     _ => false,
   };
 
   /// Asks Go for the section's data.
   Future<Object> load(golang.Scope scope, String period) => switch (this) {
     today => golang.stats.today(scope, period),
+    streaks => golang.stats.streaks(scope, period),
     futureDue => golang.stats.futureDue(scope, period),
     calendar => golang.stats.calendar(scope, period),
     reviews => golang.stats.reviews(scope, period),
@@ -70,6 +73,7 @@ enum StatsSection {
   /// The section's content for [data], as [load] returned it.
   Widget content(Object data) => switch (this) {
     today => TodayView(data as golang.TodayStats),
+    streaks => StatLines(streakLines(data as golang.StreakSection)),
     futureDue => FutureDueView(data as golang.Forecast),
     calendar => CalendarView(data as golang.Calendar),
     reviews => ReviewHistoryView(data as golang.ReviewHistory),
@@ -158,11 +162,14 @@ class StatLines extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-                Text(
-                  value,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+                Flexible(
+                  child: Text(
+                    value,
+                    textAlign: TextAlign.end,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
               ],
@@ -283,6 +290,29 @@ class CalendarView extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The lines of the Streaks section, shared with the PDF. Days the goal was
+/// met are left out without a daily goal.
+List<(String, String)> streakLines(golang.StreakSection s) {
+  final l = appL10n;
+  final longest = l.countDays(s.longest);
+  return [
+    (l.currentStreak, l.countDays(s.current)),
+    (
+      l.longestStreak,
+      switch ((s.longestFirst, s.longestLast)) {
+        (final first?, final last?) => l.longestStreakValue(
+          longest,
+          shortDate(parseDay(first)),
+          shortDate(parseDay(last)),
+        ),
+        _ => longest,
+      },
+    ),
+    (l.studyDaysInPeriod, l.countOf(count(s.studyDays), count(s.periodDays))),
+    if (s.goalDays case final days?) (l.goalDaysMet, count(days)),
+  ];
 }
 
 List<(String, String)> calendarLines(golang.Calendar c) => [

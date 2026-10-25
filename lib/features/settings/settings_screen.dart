@@ -16,6 +16,7 @@ import 'package:cardflip/data/scope.dart';
 import 'package:cardflip/features/export/export_dialog.dart';
 import 'package:cardflip/features/import/import_screen.dart';
 import 'package:cardflip/features/profiles/profile_list_screen.dart';
+import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/features/settings/sync_section.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/dialogs.dart';
@@ -395,6 +396,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (on != null) settings.setDeckByNoteType(on);
                 },
               ),
+            ),
+            _Section(l.goalsAndStreaks),
+            SwitchListTile(
+              key: const Key('show-progress'),
+              title: Text(l.showStreaksAndGoals),
+              subtitle: Text(l.showStreaksAndGoalsHelp),
+              value: settings.showProgress,
+              onChanged: settings.setShowProgress,
+            ),
+            ListTile(
+              key: const Key('daily-goal'),
+              title: Text(l.dailyGoal),
+              subtitle: Text(
+                dailyGoalLabel(l, settings.dailyGoalKind, settings.dailyGoal),
+              ),
+              onTap: () => editDailyGoal(context),
             ),
             _Section(l.review),
             SwitchListTile(

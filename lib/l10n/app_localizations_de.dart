@@ -447,6 +447,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String goDailyGoalRange(int max) {
+    return 'Das Tagesziel muss zwischen 1 und $max liegen.';
+  }
+
+  @override
   String goDayCountRange(int max) {
     return 'Die Anzahl der Tage muss zwischen 1 und $max liegen.';
   }
@@ -1662,6 +1667,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String goUnknownCustomStudy(String value) {
     return 'Unbekannte Auswahl für benutzerdefiniertes Lernen „$value“.';
+  }
+
+  @override
+  String goUnknownDailyGoal(String value) {
+    return 'Unbekanntes Tagesziel „$value“.';
   }
 
   @override
@@ -3491,6 +3501,152 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sessionComplete => 'Sitzung abgeschlossen';
 
   @override
+  String streakDaysLabel(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tage',
+      one: '1 Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String streakAtRisk(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tagen',
+      one: '1 Tag',
+    );
+    return 'Lerne heute, um deine Serie von $_temp0 zu halten';
+  }
+
+  @override
+  String get streakHeaderTooltip => 'Serien und Tagesziel';
+
+  @override
+  String goalProgressCards(int done, int goal) {
+    final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String doneString = doneNumberFormat.format(done);
+    final intl.NumberFormat goalNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String goalString = goalNumberFormat.format(goal);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      goal,
+      locale: localeName,
+      other: '$goalString Karten',
+      one: '1 Karte',
+    );
+    return '$doneString / $_temp0';
+  }
+
+  @override
+  String goalProgressMinutes(int done, int goal) {
+    final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String doneString = doneNumberFormat.format(done);
+    final intl.NumberFormat goalNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String goalString = goalNumberFormat.format(goal);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      goal,
+      locale: localeName,
+      other: '$goalString Minuten',
+      one: '1 Minute',
+    );
+    return '$doneString / $_temp0';
+  }
+
+  @override
+  String streakExtended(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tage',
+      one: '1 Tag',
+    );
+    return 'Serie auf $_temp0 verlängert';
+  }
+
+  @override
+  String streakCurrent(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tage',
+      one: '1 Tag',
+    );
+    return 'Aktuelle Serie: $_temp0';
+  }
+
+  @override
+  String get goalReached => 'Tagesziel erreicht';
+
+  @override
+  String goalCardsLeft(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Karten',
+      one: '1 Karte',
+    );
+    return 'Noch $_temp0 bis zum heutigen Ziel';
+  }
+
+  @override
+  String goalMinutesLeft(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Minuten',
+      one: '1 Minute',
+    );
+    return 'Noch $_temp0 bis zum heutigen Ziel';
+  }
+
+  @override
+  String get goalSuggestion =>
+      'Ein Tagesziel zeigt dir jeden Tag, wie weit du bist.';
+
+  @override
+  String get goalSuggestionSet => 'Tagesziel festlegen';
+
+  @override
+  String get goalSuggestionDismiss => 'Nein danke';
+
+  @override
   String moreLearningDue(String when) {
     return 'Weitere Lernkarten sind $when fällig.';
   }
@@ -3860,6 +4016,71 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get deckByNoteType => 'Stapel je nach Notiztyp wechseln';
+
+  @override
+  String get goalsAndStreaks => 'Ziele und Serien';
+
+  @override
+  String get showStreaksAndGoals => 'Serien und Ziele anzeigen';
+
+  @override
+  String get showStreaksAndGoalsHelp =>
+      'In der Stapelliste und nach dem Lernen. Nur auf diesem Gerät.';
+
+  @override
+  String get dailyGoal => 'Tagesziel';
+
+  @override
+  String get dailyGoalNone => 'Keins';
+
+  @override
+  String get dailyGoalCards => 'Karten';
+
+  @override
+  String get dailyGoalMinutes => 'Minuten';
+
+  @override
+  String dailyGoalCardsPerDay(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Karten',
+      one: '1 Karte',
+    );
+    return '$_temp0 pro Tag';
+  }
+
+  @override
+  String dailyGoalMinutesPerDay(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Minuten',
+      one: '1 Minute',
+    );
+    return '$_temp0 pro Tag';
+  }
+
+  @override
+  String get dailyGoalCardsLabel => 'Karten pro Tag';
+
+  @override
+  String get dailyGoalMinutesLabel => 'Minuten pro Tag';
+
+  @override
+  String get dailyGoalError => 'Gib eine ganze Zahl von 1 bis 9999 ein.';
+
+  @override
+  String get dailyGoalHelp =>
+      'Jeder Lerntag hält deine Serie, ob du das Ziel erreichst oder nicht.';
 
   @override
   String get review => 'Abfrage';
@@ -6929,6 +7150,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get secToday => 'Heute';
 
   @override
+  String get secStreaks => 'Serien';
+
+  @override
   String get secFutureDue => 'Künftig fällig';
 
   @override
@@ -7063,6 +7287,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get mostReviewsDay => 'Meiste Wiederholungen an einem Tag';
+
+  @override
+  String get currentStreak => 'Aktuelle Serie';
+
+  @override
+  String get longestStreak => 'Längste Serie';
+
+  @override
+  String longestStreakValue(String days, String first, String last) {
+    return '$days, vom $first bis $last';
+  }
+
+  @override
+  String get studyDaysInPeriod => 'Lerntage';
+
+  @override
+  String get goalDaysMet => 'Tage mit erreichtem Ziel';
 
   @override
   String minutesAmount(String minutes) {

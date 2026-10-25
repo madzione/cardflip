@@ -146,9 +146,42 @@ Future<void> runAppFlow(
     await tester.tap(find.byKey(const Key('editor-submit')));
     await idle();
 
+    // A daily goal of 3 cards.
+    step = 'Set a daily goal of 3 cards.';
+    await go('Settings');
+    final goal = find.byKey(const Key('daily-goal'));
+    await scrollSettingsTo(goal);
+    await tester.tap(goal);
+    await idle();
+    final dialog = find.byType(AlertDialog);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('daily-goal-kind')),
+        matching: find.text('Cards'),
+      ),
+    );
+    await idle();
+    await tester.enterText(find.byKey(const Key('daily-goal-value')), '3');
+    await tester.tap(find.descendant(of: dialog, matching: find.text('Save')));
+    await idle();
+    expect(
+      find.descendant(of: goal, matching: find.text('3 cards a day')),
+      findsOneWidget,
+    );
+
     // Study with undo: three new cards in Default.
     step = 'Study with undo: three new cards in Default.';
     await go('Decks');
+    // The deck list header: no streak yet, nothing toward the goal.
+    final header = find.byKey(const Key('progress-header'));
+    expect(
+      find.descendant(of: header, matching: find.text('0 days')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: header, matching: find.text('0 / 3 cards')),
+      findsOneWidget,
+    );
     final counts = find.byKey(
       ValueKey('counts-${(await golang.decks.tree()).first.id}'),
     );
@@ -202,6 +235,10 @@ Future<void> runAppFlow(
     await idle();
     expect(find.text('Session complete'), findsOneWidget);
     expect(find.textContaining('You studied 3 cards'), findsOneWidget);
+    // The first session of the day starts the streak and reaches the goal.
+    step = 'The summary shows the streak and the goal.';
+    expect(find.text('Streak extended to 1 day'), findsOneWidget);
+    expect(find.text('Daily goal reached'), findsOneWidget);
     await tester.tap(find.text('Back to decks'));
     await idle();
     // Back on the overview: nothing is due and nothing is buried.
@@ -210,6 +247,15 @@ Future<void> runAppFlow(
     expect(find.textContaining('buried'), findsNothing);
     await tester.pageBack();
     await idle();
+    step = 'The deck list header shows the new streak and goal progress.';
+    expect(
+      find.descendant(of: header, matching: find.text('1 day')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: header, matching: find.text('3 / 3 cards')),
+      findsOneWidget,
+    );
 
     // Device sync is offered everywhere but on the web.
     step = 'Settings has a Sync section, except on the web.';

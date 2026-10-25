@@ -420,6 +420,10 @@ class FakeGo {
     'uiScale': 100,
     'minimalist': false,
     'reduceMotion': 'system',
+    'showProgress': true,
+    'dailyGoalKind': '',
+    'dailyGoal': 0,
+    'goalSuggestionShown': false,
   };
 
   /// The profiles `app.Profiles` lists, as `{'id', 'name'}` maps. Like Go,
@@ -679,6 +683,10 @@ class FakeGo {
   /// defaults. A section with a completer in [statsGates] answers once it
   /// completes; one with an error in [statsErrors] fails with it.
   Map<String, Object?> stats = statsJson();
+
+  /// What `progress.Today` answers, see [progressJson]; while null it
+  /// fails, so the deck list shows no streak.
+  Map<String, Object?>? progress;
   Map<String, Completer<void>> statsGates = {};
   Map<String, String> statsErrors = {};
 
@@ -1181,6 +1189,33 @@ class FakeGo {
         throw 'Unknown reduce motion choice "$mode".';
       }
       settings = {...settings, 'reduceMotion': mode};
+      return null;
+    });
+    handle('progress.Today', (_) {
+      if (progress case final p?) return p;
+      throw 'no progress';
+    });
+    handle('app.SetShowProgress', (args) {
+      settings = {...settings, 'showProgress': args[0]};
+      return null;
+    });
+    handle('app.SetDailyGoal', (args) {
+      final [kind as String, value as int] = args;
+      if (!const ['', 'cards', 'minutes'].contains(kind)) {
+        throw 'Unknown daily goal "$kind".';
+      }
+      if (kind.isNotEmpty && (value < 1 || value > 9999)) {
+        throw 'The daily goal must be between 1 and 9999.';
+      }
+      settings = {
+        ...settings,
+        'dailyGoalKind': kind,
+        'dailyGoal': kind.isEmpty ? 0 : value,
+      };
+      return null;
+    });
+    handle('app.GoalSuggestionShown', (_) {
+      settings = {...settings, 'goalSuggestionShown': true};
       return null;
     });
     handle('app.SetShowPlayButtons', (args) {
@@ -2453,6 +2488,7 @@ class PreviewNote {
 /// The sections of the statistics screen, as `StatsService` names them.
 const statsSections = [
   'Today',
+  'Streaks',
   'FutureDue',
   'Calendar',
   'Reviews',
@@ -2466,6 +2502,48 @@ const statsSections = [
   'Buttons',
   'TrueRetention',
 ];
+
+/// JSON for `progress.Today`: a [current] streak, [cards] and [minutes]
+/// today, and a goal of [goal] [goalKind] ("cards" or "minutes"; "" for
+/// none). Today is studied when cards were answered; the streak is at risk
+/// otherwise.
+Map<String, Object?> progressJson({
+  int current = 0,
+  int cards = 0,
+  int minutes = 0,
+  String goalKind = '',
+  int goal = 0,
+  int? longest,
+}) => {
+  'current': current,
+  'atRisk': current > 0 && cards == 0,
+  'todayStudied': cards > 0,
+  'longest': longest ?? current,
+  'todayCards': cards,
+  'todayMinutes': minutes,
+  'goalKind': goalKind,
+  'goal': goal,
+  'goalReached': switch (goalKind) {
+    'cards' => cards >= goal,
+    'minutes' => minutes >= goal,
+    _ => false,
+  },
+};
+
+/// JSON for the Streaks section: a 9-day streak, a 41-day longest streak,
+/// 24 of 30 study days, and [goalDays] days that met the goal (null without
+/// a goal).
+Map<String, Object?> streakSectionJson({int? goalDays}) => {
+  'current': 9,
+  'atRisk': false,
+  'todayStudied': true,
+  'longest': 41,
+  'longestFirst': '2026-03-02',
+  'longestLast': '2026-04-11',
+  'studyDays': 24,
+  'periodDays': 30,
+  'goalDays': ?goalDays,
+};
 
 /// JSON for a histogram with [counts] in buckets of [width] from [start].
 Map<String, Object?> histogramJson(
@@ -2525,6 +2603,7 @@ Map<String, Object?> _retentionCount(int passed, int failed) => {
 /// JSON for every statistics section: 40 cards today, a month of reviews,
 /// a small forecast and a few memory states.
 Map<String, Object?> statsJson() => {
+  'Streaks': streakSectionJson(),
   'Today': {
     'cards': 40,
     'time': const Duration(minutes: 10).inMicroseconds * 1000,

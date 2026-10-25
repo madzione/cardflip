@@ -70,6 +70,7 @@ Object decodeSection(StatsSection s) {
   final json = jsonDecode(jsonEncode(statsJson()[statsSections[s.index]]));
   return switch (s) {
     StatsSection.today => golang.TodayStats.fromJson(json),
+    StatsSection.streaks => golang.StreakSection.fromJson(json),
     StatsSection.futureDue => golang.Forecast.fromJson(json),
     StatsSection.calendar => golang.Calendar.fromJson(json),
     StatsSection.reviews ||
@@ -464,6 +465,52 @@ void main() {
       expect(inSection(s, find.text('-')), findsNWidgets(3)); // yesterday
       expect(statValue(tester, s, 'Desired retention'), '90%');
     });
+
+    testWidgets('streaks', (tester) async {
+      // Collection streaks (statistics spec): a 9-day streak, the longest
+      // 41 days with its dates, 24 of 30 study days. No goal (spec): no
+      // goal days.
+      await openStats(tester);
+      const s = StatsSection.streaks;
+      expect(statValue(tester, s, 'Current streak'), '9 days');
+      expect(
+        statValue(tester, s, 'Longest streak'),
+        '41 days, from Mar 2 to Apr 11',
+      );
+      expect(statValue(tester, s, 'Study days'), '24 of 30');
+      expect(inSection(s, find.text('Days the goal was met')), findsNothing);
+    });
+
+    testWidgets('streaks with a goal', (tester) async {
+      // Goal days (statistics spec): 18 days met the goal.
+      final go = FakeGo();
+      go.stats = {...go.stats, 'Streaks': streakSectionJson(goalDays: 18)};
+      await openStats(tester, go: go);
+      expect(
+        statValue(tester, StatsSection.streaks, 'Days the goal was met'),
+        '18',
+      );
+    });
+
+    testWidgets('the deck list header opens them at Streaks', (tester) async {
+      // Open statistics (progress spec): the collection statistics, scrolled
+      // to the Streaks section.
+      final go = FakeGo()..progress = progressJson(current: 12, cards: 3);
+      await pumpApp(tester, size: phone);
+      await tester.tap(find.byKey(const Key('progress-header')));
+      await tester.pumpAndSettle();
+      expect(find.byType(StatsScreen), findsOneWidget);
+      expect(lastRequests(go), {
+        jsonEncode([
+          {'kind': 'collection'},
+          'month',
+        ]),
+      });
+      final top = tester.getTopLeft(section(StatsSection.streaks)).dy;
+      final appBar = tester.getBottomLeft(find.byType(AppBar)).dy;
+      expect(top, lessThan(appBar + 100));
+      expect(top, greaterThanOrEqualTo(appBar));
+    });
   });
 
   group('save as PDF', () {
@@ -483,6 +530,9 @@ void main() {
       }
       expect(text, contains('Spanish - time-based sections: 1 month'));
       expect(text, contains('Studied 40 cards in 10 minutes today.'));
+      expect(text, contains('Current streak 9 days'));
+      expect(text, contains('41 days, from Mar 2 to Apr 11'));
+      expect(text, contains('Study days 24 of 30'));
       expect(text, contains('Last month 90.9% (100/110) 90.0% (180/200)'));
 
       // A section that failed to load is left out.

@@ -418,7 +418,7 @@ var notUndoSteps = []string{
 	"Optimize", "OptimizeSearch", "RescheduleCount", "RescheduleCountAll", "Simulate", "SuggestRetention",
 	"EachMedia", "EmptyCards", "FindDuplicates", "FindReplacePreview", "ChangeNoteTypePreview", "HasMedia", "IsEmptyCard", "Media", "NextCountChange", "NextDue", "IsMarked", "Note",
 	"NoteCount", "NoteType", "NoteTypeDeletionInfo", "NoteTypes", "Now", "Overview", "PreviewTemplate", "Previews", "QuestionText", "Queue", "ReadDeletionLog", "ReadRevlog", "RenderCard", "RenderCardTyped",
-	"RecentDecks", "RecentNotes", "ReviewsExist", "ReviewsOfCard", "Revision", "RevlogMonths", "NoteRows", "Rows", "Search", "SearchNotes", "Settings", "Snapshot",
+	"RecentAnswers", "RecentDecks", "RecentNotes", "ReviewsExist", "StudyDays", "ReviewsOfCard", "Revision", "RevlogMonths", "NoteRows", "Rows", "Search", "SearchNotes", "Settings", "Snapshot",
 	"Subscribe", "TagUsage", "TemplateCardCount", "UndoStatus", "LastStep",
 	// The history itself, view state, settings and the built-in names
 	// (app state, not collection data), and replacing the

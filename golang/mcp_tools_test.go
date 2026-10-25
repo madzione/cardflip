@@ -237,6 +237,22 @@ func TestMcpStatsTool(t *testing.T) {
 	if deck.Scope != "Spanish" || deck.New != 2 || deck.Total != 2 {
 		t.Fatalf("deck = %+v", deck)
 	}
+	// No goal: no streak yet and a null goal.
+	if all.Streak != (mcpStreak{}) || all.Goal != nil {
+		t.Fatalf("no goal: streak %+v, goal %+v", all.Streak, all.Goal)
+	}
+	// Goal progress (spec): 20 of 30 cards today, a 12-day streak; the
+	// streak is the collection's, also for a deck.
+	importHistory(t, s, "history", 10, 1000, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
+	studyNew(t, s, 20, 1000)
+	check(t, s.app.SetDailyGoal("cards", 30))
+	for _, in := range []map[string]any{{}, {"deck": "Spanish"}} {
+		got := call[mcpStats](t, cs, "get_stats", in)
+		if got.Streak != (mcpStreak{Current: 12, TodayStudied: true}) || got.Goal == nil ||
+			*got.Goal != (mcpGoal{Kind: "cards", Value: 30, Progress: 20}) {
+			t.Fatalf("%v: streak %+v, goal %+v", in, got.Streak, got.Goal)
+		}
+	}
 }
 
 func TestMcpToolsWithoutCollection(t *testing.T) {

@@ -679,6 +679,16 @@ type Settings struct {
 	// ReduceMotion is ReduceMotionOn or ReduceMotionOff; empty follows the
 	// operating system.
 	ReduceMotion string `json:"reduceMotion,omitempty"`
+	// DailyGoalKind is GoalCards or GoalMinutes; empty sets no daily goal.
+	// DailyGoal is the number of cards or minutes.
+	DailyGoalKind string `json:"dailyGoalKind,omitempty"`
+	DailyGoal     int    `json:"dailyGoal,omitempty"`
+	// HideProgress hides the streak and goal on the deck list and the study
+	// summary; stored inverted so that they show by default.
+	HideProgress bool `json:"hideProgress,omitempty"`
+	// GoalSuggestionShown records the one-time suggestion to set a daily
+	// goal.
+	GoalSuggestionShown bool `json:"goalSuggestion,omitempty"`
 }
 
 // UI size limits and default, in percent. The size changes in steps of
@@ -696,6 +706,15 @@ const (
 	ReduceMotionOn     = "on"
 	ReduceMotionOff    = "off"
 )
+
+// Daily goal kinds.
+const (
+	GoalCards   = "cards"
+	GoalMinutes = "minutes"
+)
+
+// MaxDailyGoal is the largest daily goal, in cards or minutes.
+const MaxDailyGoal = 9999
 
 // MaxRecentDecks is how many recently studied decks Settings.RecentDecks
 // keeps.

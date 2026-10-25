@@ -6,6 +6,7 @@ import 'backups_model.dart';
 import 'changes.dart';
 import 'deck_list_model.dart';
 import 'profiles_model.dart';
+import 'progress_model.dart';
 import 'render_environment.dart';
 import 'settings_model.dart';
 import 'sync_model.dart';
@@ -22,6 +23,7 @@ class AppState {
     changes = ChangeHub();
     settings = SettingsModel(changes);
     deckList = DeckListModel(changes);
+    progress = ProgressModel(deckList, settings);
     backups = BackupsModel(changes);
     undo = UndoModel(changes);
     renderEnv = RenderEnvironment(isWeb: isWeb);
@@ -45,6 +47,7 @@ class AppState {
   late final ChangeHub changes;
   late final SettingsModel settings;
   late final DeckListModel deckList;
+  late final ProgressModel progress;
   late final BackupsModel backups;
   late final UndoModel undo;
 
@@ -67,6 +70,7 @@ class AppState {
   ]);
 
   void dispose() {
+    progress.dispose();
     settings.dispose();
     deckList.dispose();
     backups.dispose();

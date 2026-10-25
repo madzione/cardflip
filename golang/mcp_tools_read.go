@@ -247,6 +247,22 @@ type mcpStats struct {
 	// DueNext30Days[i] is the number of cards due i days from today.
 	DueNext30Days []int `json:"dueNext30Days" jsonschema:"cards due on each of the next 30 days; index 0 is today"`
 	Overdue       int   `json:"overdue"`
+	// Streak and Goal are the collection's, whatever the deck.
+	Streak mcpStreak `json:"streak" jsonschema:"the collection's study streak, also when a deck is given"`
+	Goal   *mcpGoal  `json:"goal" jsonschema:"today's progress toward the collection's daily goal; null when no goal is set"`
+}
+
+type mcpStreak struct {
+	Current      int  `json:"current" jsonschema:"consecutive days studied, ending today or, when today has no answers yet, yesterday"`
+	TodayStudied bool `json:"todayStudied" jsonschema:"whether a card was answered today"`
+	AtRisk       bool `json:"atRisk" jsonschema:"the streak continues from yesterday and needs an answer today to go on"`
+}
+
+type mcpGoal struct {
+	Kind     string `json:"kind" jsonschema:"cards or minutes"`
+	Value    int    `json:"value" jsonschema:"the number of cards or minutes to study each day"`
+	Progress int    `json:"progress" jsonschema:"cards answered or whole minutes studied today"`
+	Reached  bool   `json:"reached"`
 }
 
 func addReadTools(server *mcp.Server, t *mcpTools) {
@@ -370,7 +386,8 @@ func addReadTools(server *mcp.Server, t *mcpTools) {
 			}
 			return out, nil
 		})
-	readTool(server, t, "get_stats", "Collection or deck statistics: today's studied cards and time, cards by state, and the number of cards due on each of the next 30 days.",
+	readTool(server, t, "get_stats", "Collection or deck statistics: today's studied cards and time, cards by state, and the number of cards due on each of the next 30 days. "+
+		"Also the collection's current study streak and today's progress toward its daily goal, if one is set.",
 		func(in mcpStatsInput) (mcpStats, error) {
 			scope := stats.Scope{Kind: stats.ScopeCollection}
 			out := mcpStats{Scope: "collection"}
@@ -404,6 +421,17 @@ func addReadTools(server *mcp.Server, t *mcpTools) {
 			out.DueNext30Days = make([]int, 30)
 			copy(out.DueNext30Days, due.Days)
 			out.Overdue = due.Overdue
+			p, err := t.progress.Today()
+			if err != nil {
+				return mcpStats{}, err
+			}
+			out.Streak = mcpStreak{Current: p.Current, TodayStudied: p.TodayStudied, AtRisk: p.AtRisk}
+			switch p.GoalKind {
+			case core.GoalCards:
+				out.Goal = &mcpGoal{Kind: p.GoalKind, Value: p.Goal, Progress: p.TodayCards, Reached: p.GoalReached}
+			case core.GoalMinutes:
+				out.Goal = &mcpGoal{Kind: p.GoalKind, Value: p.Goal, Progress: p.TodayMinutes, Reached: p.GoalReached}
+			}
 			return out, nil
 		})
 }

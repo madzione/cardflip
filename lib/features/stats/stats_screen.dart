@@ -16,19 +16,27 @@ const collectionScope = golang.Scope(kind: 'collection');
 golang.Scope deckScope(int deckId) =>
     golang.Scope(kind: 'deck', deckID: deckId);
 
-/// Opens statistics for [scope].
-Future<void> showStats(BuildContext context, golang.Scope scope) =>
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => StatsScreen(scope: scope)));
+/// Opens statistics for [scope], scrolled to [section] when given.
+Future<void> showStats(
+  BuildContext context,
+  golang.Scope scope, {
+  StatsSection? section,
+}) => Navigator.of(context).push(
+  MaterialPageRoute<void>(
+    builder: (_) => StatsScreen(scope: scope, section: section),
+  ),
+);
 
 /// The statistics screen (statistics spec): scope and period controls and
 /// every section, each loading on its own so the screen fills in as Go
 /// finishes them.
 class StatsScreen extends StatefulWidget {
-  const StatsScreen({super.key, required this.scope});
+  const StatsScreen({super.key, required this.scope, this.section});
 
   final golang.Scope scope;
+
+  /// The section to scroll to when the screen opens.
+  final StatsSection? section;
 
   @override
   State<StatsScreen> createState() => _StatsScreenState();
@@ -44,10 +52,21 @@ class _StatsScreenState extends State<StatsScreen> {
   late int? _deckId = widget.scope.deckID;
   bool _saving = false;
 
+  /// The key of [StatsScreen.section]'s card, to scroll to it.
+  final _sectionKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _load();
+    if (widget.section != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = _sectionKey.currentContext;
+        if (target != null && target.mounted) {
+          Scrollable.ensureVisible(target, alignment: 0.05);
+        }
+      });
+    }
   }
 
   @override
@@ -185,10 +204,13 @@ class _StatsScreenState extends State<StatsScreen> {
           );
           final cards = [
             for (final s in StatsSection.values)
-              _SectionCard(
-                key: Key('stats-${s.name}'),
-                section: s,
-                future: _sections[s]!,
+              KeyedSubtree(
+                key: s == widget.section ? _sectionKey : null,
+                child: _SectionCard(
+                  key: Key('stats-${s.name}'),
+                  section: s,
+                  future: _sections[s]!,
+                ),
               ),
           ];
           if (constraints.maxWidth >= wideLayoutWidth) {

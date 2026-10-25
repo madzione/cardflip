@@ -122,6 +122,16 @@ type Settings struct {
 	// "off": whether transitions and animations are replaced by immediate
 	// changes.
 	ReduceMotion string `json:"reduceMotion"`
+	// ShowProgress shows the streak and daily goal on the deck list and the
+	// study summary ("Show streaks and goals").
+	ShowProgress bool `json:"showProgress"`
+	// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
+	// DailyGoal is the number of cards or minutes.
+	DailyGoalKind string `json:"dailyGoalKind"`
+	DailyGoal     int    `json:"dailyGoal"`
+	// GoalSuggestionShown records that the user opened or dismissed the
+	// one-time suggestion to set a daily goal.
+	GoalSuggestionShown bool `json:"goalSuggestionShown"`
 }
 
 // Settings returns the app settings.
@@ -141,7 +151,8 @@ func (s *AppService) Settings() (Settings, error) {
 		SpaceAnswersGood: !st.SpaceOnlyReveals, HideBarsDuringReview: st.HideBarsDuringReview,
 		QuestionFadeMs: int(st.QuestionFade() / time.Millisecond), RecentDecks: fromIDs(c.RecentDecks()),
 		UIScale: cmp.Or(st.UIScale, core.DefaultUIScale), Minimalist: st.Minimalist,
-		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem)}, nil
+		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem), ShowProgress: !st.HideProgress,
+		DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal, GoalSuggestionShown: st.GoalSuggestionShown}, nil
 }
 
 func browserColumns(st core.Settings) []string {
@@ -247,6 +258,27 @@ func (s *AppService) SetReduceMotion(mode string) error {
 		mode = ""
 	}
 	return s.updateSettings(func(st *core.Settings) { st.ReduceMotion = mode })
+}
+
+// SetShowProgress sets whether the deck list and the study summary show
+// the streak and daily goal. It belongs to the device.
+func (s *AppService) SetShowProgress(on bool) error {
+	return s.updateSettings(func(st *core.Settings) { st.HideProgress = !on })
+}
+
+// SetDailyGoal sets the daily goal: kind "cards" or "minutes" with a value
+// from 1 to 9,999, or kind "" for no goal (the value is then ignored).
+func (s *AppService) SetDailyGoal(kind string, value int) error {
+	if kind == "" {
+		value = 0
+	}
+	return s.updateSettings(func(st *core.Settings) { st.DailyGoalKind, st.DailyGoal = kind, value })
+}
+
+// GoalSuggestionShown records that the user opened or dismissed the
+// one-time suggestion to set a daily goal.
+func (s *AppService) GoalSuggestionShown() error {
+	return s.updateSettings(func(st *core.Settings) { st.GoalSuggestionShown = true })
 }
 
 // SetShowPlayButtons sets whether cards with audio show replay buttons.

@@ -490,6 +490,86 @@ void main() {
     expect(tester.widget<DropdownButton<int>>(fade).value, 300);
   });
 
+  group('goals and streaks', () {
+    testWidgets('the values save', (tester) async {
+      // Goals and streaks settings (progress spec): shown by default, no
+      // goal.
+      final go = FakeGo();
+      await openSettings(tester);
+      final show = find.byKey(const Key('show-progress'));
+      await scrollTo(tester, show);
+      expect(tester.widget<SwitchListTile>(show).value, isTrue);
+      await tester.tap(show);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetShowProgress'), [
+        [false],
+      ]);
+      expect(tester.widget<SwitchListTile>(show).value, isFalse);
+
+      // Set a goal (spec): 20 minutes.
+      final goal = find.byKey(const Key('daily-goal'));
+      await scrollTo(tester, goal);
+      expect(
+        find.descendant(of: goal, matching: find.text('None')),
+        findsOneWidget,
+      );
+      await tester.tap(goal);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Minutes'));
+      await tester.pumpAndSettle();
+      final value = find.byKey(const Key('daily-goal-value'));
+      await tester.enterText(value, '0');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.text('Enter a whole number from 1 to 9999.'), findsOneWidget);
+      expect(go.callsTo('app.SetDailyGoal'), isEmpty);
+      await tester.enterText(value, '20');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetDailyGoal'), [
+        ['minutes', 20],
+      ]);
+      expect(
+        find.descendant(of: goal, matching: find.text('20 minutes a day')),
+        findsOneWidget,
+      );
+
+      // No goal again.
+      await tester.tap(goal);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(value).controller!.text, '20');
+      await tester.tap(find.text('None').last);
+      await tester.pumpAndSettle();
+      expect(value, findsNothing);
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetDailyGoal').last, ['', 0]);
+      expect(go.settings['dailyGoalKind'], '');
+      expect(
+        find.descendant(of: goal, matching: find.text('None')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('hiding removes the deck list header', (tester) async {
+      // Hidden (spec).
+      final go = FakeGo()..progress = progressJson(current: 12, cards: 3);
+      await pumpApp(tester, size: desktop);
+      final header = find.byKey(const Key('progress-header'));
+      expect(header, findsOneWidget);
+      await tester.tap(find.text('Settings').last);
+      await tester.pumpAndSettle();
+      final show = find.byKey(const Key('show-progress'));
+      await scrollTo(tester, show);
+      await tester.tap(show);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Decks').last);
+      await tester.pumpAndSettle();
+      expect(header, findsNothing);
+      expect(go.settings['showProgress'], isFalse);
+    });
+  });
+
   group('appearance', () {
     testWidgets('UI size, minimalist mode and reduce motion default and are '
         'sent to Go', (tester) async {

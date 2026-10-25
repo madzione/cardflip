@@ -41,6 +41,7 @@ type services struct {
 	transfer *TransferService
 	media    *MediaService
 	stats    *StatsService
+	progress *ProgressService
 	mcp      *McpService
 	clock    *time.Time
 	// stores are the profiles' data by data directory; the default
@@ -56,7 +57,7 @@ func (s *services) profileStore(id string) *storage.MemoryStore {
 }
 
 // newServices builds the services on an in-memory store, like fluffy.Start.
-func newServices(t *testing.T, store *storage.MemoryStore) *services {
+func newServices(t testing.TB, store *storage.MemoryStore) *services {
 	t.Helper()
 	a := newApp()
 	now := time.Date(2026, 10, 13, 12, 0, 0, 0, time.Local)
@@ -88,8 +89,8 @@ func newServices(t *testing.T, store *storage.MemoryStore) *services {
 	s.app, s.decks, s.notes = &AppService{a: a}, &DecksService{a: a}, &NotesService{a: a}
 	s.study, s.browse = &StudyService{a: a}, &BrowseService{a: a}
 	s.transfer, s.media = &TransferService{a: a}, &MediaService{a: a}
-	s.stats = &StatsService{a: a}
-	a.resets = []func(){s.study.reset, s.transfer.reset}
+	s.stats, s.progress = &StatsService{a: a}, &ProgressService{a: a}
+	a.resets = []func(){s.study.reset, s.transfer.reset, s.progress.reset}
 	s.mcp = newMcpService(a)
 	s.mcp.read = func(string) ([]byte, error) {
 		if s.mcpFile == nil {
@@ -109,7 +110,7 @@ func newServices(t *testing.T, store *storage.MemoryStore) *services {
 	return s
 }
 
-func opened(t *testing.T) (*services, *storage.MemoryStore) {
+func opened(t testing.TB) (*services, *storage.MemoryStore) {
 	t.Helper()
 	store := storage.NewMemoryStore()
 	s := newServices(t, store)
@@ -128,7 +129,7 @@ func must[T any](v T, err error) T {
 	return v
 }
 
-func check(t *testing.T, err error) {
+func check(t testing.TB, err error) {
 	t.Helper()
 	if err != nil {
 		t.Fatal(err)
@@ -660,6 +661,44 @@ func TestAppearanceSettings(t *testing.T) {
 	check(t, other.app.SetReduceMotion("system"))
 	if st := must(other.app.Settings()); st.ReduceMotion != "system" {
 		t.Fatalf("settings = %+v", st)
+	}
+}
+
+func TestGoalSettings(t *testing.T) {
+	s, _ := opened(t)
+	// Defaults, also in collections without the fields: no goal, streaks
+	// shown.
+	if st := must(s.app.Settings()); !st.ShowProgress || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.GoalSuggestionShown {
+		t.Fatalf("default settings = %+v", st)
+	}
+	for _, bad := range []struct {
+		kind  string
+		value int
+	}{{"cards", 0}, {"minutes", -5}, {"cards", 10000}, {"reviews", 10}} {
+		if err := s.app.SetDailyGoal(bad.kind, bad.value); !core.IsUserError(err) {
+			t.Fatalf("goal %s %d: err = %v", bad.kind, bad.value, err)
+		}
+	}
+	check(t, s.app.SetDailyGoal("minutes", 9999))
+	check(t, s.app.SetDailyGoal("", 0))
+	if st := must(s.app.Settings()); st.DailyGoalKind != "" || st.DailyGoal != 0 {
+		t.Fatalf("no goal: %+v", st)
+	}
+	check(t, s.app.SetDailyGoal("", 25)) // the value is dropped with the kind
+	if st := must(s.app.Settings()); st.DailyGoal != 0 {
+		t.Fatalf("no goal with a value: %+v", st)
+	}
+	check(t, s.app.SetShowProgress(false))
+	check(t, s.app.GoalSuggestionShown())
+	// Persisted in backups (spec): a goal of 30 cards survives a restore on
+	// another installation.
+	check(t, s.app.SetDailyGoal("cards", 30))
+	file := must(s.transfer.ExportBackup())
+	other, _ := opened(t)
+	info := must(other.transfer.StageBytes(file.Name, file.Data))
+	check(t, other.transfer.Restore(info.ID))
+	if st := must(other.app.Settings()); st.DailyGoalKind != "cards" || st.DailyGoal != 30 {
+		t.Fatalf("settings after restore = %+v", st)
 	}
 }
 

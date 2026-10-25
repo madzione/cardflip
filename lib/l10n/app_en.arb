@@ -507,6 +507,15 @@
       }
     }
   },
+  "goDailyGoalRange": "The daily goal must be between 1 and {max}.",
+  "@goDailyGoalRange": {
+    "description": "A message from Go (code dailyGoalRange).",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
   "goDayCountRange": "The number of days must be between 1 and {max}.",
   "@goDayCountRange": {
     "description": "A message from Go (code dayCountRange).",
@@ -2273,6 +2282,15 @@
       }
     }
   },
+  "goUnknownDailyGoal": "Unknown daily goal \"{value}\".",
+  "@goUnknownDailyGoal": {
+    "description": "A message from Go (code unknownDailyGoal).",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
   "goUnknownEasyDaysLevel": "Unknown Easy Days level {value}.",
   "@goUnknownEasyDaysLevel": {
     "description": "A message from Go (code unknownEasyDaysLevel).",
@@ -3716,6 +3734,99 @@
     }
   },
   "sessionComplete": "Session complete",
+  "streakDaysLabel": "{count, plural, =1{1 day} other{{count} days}}",
+  "@streakDaysLabel": {
+    "description": "The current streak on the deck list header, e.g. \"12 days\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "streakAtRisk": "Study today to keep your {count}-day streak",
+  "@streakAtRisk": {
+    "description": "Deck list header when today has no answers yet and the streak is alive.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "streakHeaderTooltip": "Streaks and daily goal",
+  "goalProgressCards": "{done} / {goal, plural, =1{1 card} other{{goal} cards}}",
+  "@goalProgressCards": {
+    "description": "Today's progress toward a card goal, e.g. \"18 / 30 cards\".",
+    "placeholders": {
+      "done": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "goal": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "goalProgressMinutes": "{done} / {goal, plural, =1{1 minute} other{{goal} minutes}}",
+  "@goalProgressMinutes": {
+    "description": "Today's progress toward a minute goal, e.g. \"12 / 20 minutes\".",
+    "placeholders": {
+      "done": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "goal": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "streakExtended": "Streak extended to {count, plural, =1{1 day} other{{count} days}}",
+  "@streakExtended": {
+    "description": "Study summary, when this session made today a study day.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "streakCurrent": "Current streak: {count, plural, =1{1 day} other{{count} days}}",
+  "@streakCurrent": {
+    "description": "Study summary.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "goalReached": "Daily goal reached",
+  "goalCardsLeft": "{count, plural, =1{1 more card} other{{count} more cards}} to reach today''s goal",
+  "@goalCardsLeft": {
+    "description": "Study summary.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "goalMinutesLeft": "{count, plural, =1{1 more minute} other{{count} more minutes}} to reach today''s goal",
+  "@goalMinutesLeft": {
+    "description": "Study summary.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "goalSuggestion": "A daily goal shows how far you are each day.",
+  "goalSuggestionSet": "Set a daily goal",
+  "goalSuggestionDismiss": "No thanks",
   "moreLearningDue": "More learning cards will be due {when}.",
   "@moreLearningDue": {
     "description": "{when} is like \"at 14:05\" or \"tomorrow\".",
@@ -4049,6 +4160,47 @@
   "deckForNewCards": "Deck for new cards",
   "currentDeck": "Current deck",
   "deckByNoteType": "Change deck depending on note type",
+  "goalsAndStreaks": "Goals and streaks",
+  "@goalsAndStreaks": {
+    "description": "Settings section."
+  },
+  "showStreaksAndGoals": "Show streaks and goals",
+  "showStreaksAndGoalsHelp": "On the deck list and after studying. Only on this device.",
+  "dailyGoal": "Daily goal",
+  "dailyGoalNone": "None",
+  "@dailyGoalNone": {
+    "description": "No daily goal."
+  },
+  "dailyGoalCards": "Cards",
+  "@dailyGoalCards": {
+    "description": "A daily goal of a number of cards."
+  },
+  "dailyGoalMinutes": "Minutes",
+  "@dailyGoalMinutes": {
+    "description": "A daily goal of a number of minutes."
+  },
+  "dailyGoalCardsPerDay": "{count, plural, =1{1 card} other{{count} cards}} a day",
+  "@dailyGoalCardsPerDay": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "dailyGoalMinutesPerDay": "{count, plural, =1{1 minute} other{{count} minutes}} a day",
+  "@dailyGoalMinutesPerDay": {
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "dailyGoalCardsLabel": "Cards per day",
+  "dailyGoalMinutesLabel": "Minutes per day",
+  "dailyGoalError": "Enter a whole number from 1 to 9999.",
+  "dailyGoalHelp": "Studying on any day keeps your streak, whether or not you reach the goal.",
   "review": "Review",
   "@review": {
     "description": "Settings section about the study screen."
@@ -6031,6 +6183,10 @@
   "@secToday": {
     "description": "Statistics section."
   },
+  "secStreaks": "Streaks",
+  "@secStreaks": {
+    "description": "Statistics section."
+  },
   "secFutureDue": "Future due",
   "@secFutureDue": {
     "description": "Statistics section."
@@ -6179,6 +6335,25 @@
     }
   },
   "mostReviewsDay": "Most reviews on one day",
+  "currentStreak": "Current streak",
+  "longestStreak": "Longest streak",
+  "longestStreakValue": "{days}, from {first} to {last}",
+  "@longestStreakValue": {
+    "description": "The longest streak with its dates, e.g. \"41 days, from Mar 2 to Apr 11\"; {days} is like \"41 days\".",
+    "placeholders": {
+      "days": {
+        "type": "String"
+      },
+      "first": {
+        "type": "String"
+      },
+      "last": {
+        "type": "String"
+      }
+    }
+  },
+  "studyDaysInPeriod": "Study days",
+  "goalDaysMet": "Days the goal was met",
   "minutesAmount": "{minutes} min",
   "@minutesAmount": {
     "description": "Review time in minutes, e.g. \"12 min\".",

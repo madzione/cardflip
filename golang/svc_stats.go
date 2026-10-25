@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"cardflip/golang/core"
 	"cardflip/golang/stats"
 )
 
@@ -39,6 +40,25 @@ func section[T any](s *StatsService, scope stats.Scope, period string, fn func(*
 // Today summarises the current study day.
 func (s *StatsService) Today(scope stats.Scope, period string) (stats.TodayStats, error) {
 	return section(s, scope, period, stats.TodaySummary)
+}
+
+// Streaks are the current and longest streak of the scope, its study days
+// in the period and, with a daily goal, the days of the period that met it.
+func (s *StatsService) Streaks(scope stats.Scope, period string) (stats.StreakSection, error) {
+	d, err := s.data(scope, period)
+	if err != nil {
+		return stats.StreakSection{}, err
+	}
+	c, err := s.a.collection()
+	if err != nil {
+		return stats.StreakSection{}, err
+	}
+	return stats.StreakSummary(d, goalOf(c.Settings()), period), nil
+}
+
+// goalOf returns the daily goal of st.
+func goalOf(st core.Settings) stats.Goal {
+	return stats.Goal{Kind: st.DailyGoalKind, Value: st.DailyGoal}
 }
 
 // FutureDue is the forecast of due cards over the period.

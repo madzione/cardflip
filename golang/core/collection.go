@@ -89,6 +89,9 @@ type Collection struct {
 	// reviews indexes the whole review log by card; nil until a search
 	// first needs it (see loadReviewIndex).
 	reviews reviewIndex
+	// reviewGen counts the changes to the answers in the review log other
+	// than new answers (see RecentAnswers).
+	reviewGen uint64
 	// load counts the review cards due on each study day (see dueLoad).
 	load dueLoad
 
@@ -244,6 +247,7 @@ func (c *Collection) reset() {
 	c.revlog = nil
 	c.revlogMonths = map[string]bool{}
 	c.reviews = nil
+	c.reviewGen++
 	c.resetDueLoad()
 	c.meta = map[metaKey]objMeta{}
 	c.tombs = map[metaKey]objMeta{}
@@ -636,6 +640,7 @@ func (c *Collection) apply(o *op) {
 		delete(c.presets, id)
 	}
 	c.applyReviews(o)
+	c.noteReviewChange(o)
 	if o.Review != nil {
 		// Keep the log in ID order when redo brings an entry back.
 		i := len(c.revlog)
@@ -738,6 +743,15 @@ func (c *Collection) UpdateSettings(s Settings) error {
 	case "", ReduceMotionOn, ReduceMotionOff:
 	default:
 		return userErr("unknownReduceMotion", "Unknown reduce motion choice %q.", s.ReduceMotion)
+	}
+	switch s.DailyGoalKind {
+	case "":
+	case GoalCards, GoalMinutes:
+		if s.DailyGoal < 1 || s.DailyGoal > MaxDailyGoal {
+			return userErr("dailyGoalRange", "The daily goal must be between 1 and %d.", MaxDailyGoal)
+		}
+	default:
+		return userErr("unknownDailyGoal", "Unknown daily goal %q.", s.DailyGoalKind)
 	}
 	if b := s.Backup; b.IntervalMinutes < 0 || b.IntervalMinutes > MaxBackupInterval {
 		return userErr("backupIntervalRange", "The backup interval must be between 0 and %d minutes.", MaxBackupInterval)

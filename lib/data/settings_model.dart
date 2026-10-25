@@ -35,6 +35,19 @@ class SettingsModel extends ChangeNotifier {
   /// "Reduce motion": "system" follows the operating system, "on" or "off".
   String reduceMotion = 'system';
 
+  /// "Show streaks and goals" on the deck list and the study summary; it
+  /// belongs to the device.
+  bool showProgress = true;
+
+  /// The daily goal: "cards" or "minutes" with [dailyGoal] of them, or ""
+  /// for none.
+  String dailyGoalKind = '';
+  int dailyGoal = 0;
+
+  /// Whether the user opened or dismissed the one-time suggestion to set a
+  /// daily goal.
+  bool goalSuggestionShown = false;
+
   /// Whether a waiting study session shows learning cards as soon as they
   /// are due, instead of asking first.
   bool autoContinueLearning = false;
@@ -135,6 +148,10 @@ class SettingsModel extends ChangeNotifier {
       uiScale = s.uiScale;
       minimalist = s.minimalist;
       reduceMotion = s.reduceMotion;
+      showProgress = s.showProgress;
+      dailyGoalKind = s.dailyGoalKind;
+      dailyGoal = s.dailyGoal;
+      goalSuggestionShown = s.goalSuggestionShown;
       autoContinueLearning = s.autoContinueLearning;
       learnAheadMinutes = s.learnAheadMinutes;
       timeboxMinutes = s.timeboxMinutes;
@@ -212,6 +229,34 @@ class SettingsModel extends ChangeNotifier {
       reduceMotion = previous;
       notifyListeners();
     }
+  }
+
+  Future<void> setShowProgress(bool on) async {
+    showProgress = on;
+    notifyListeners();
+    if (!await guard(() => golang.app.setShowProgress(on))) {
+      showProgress = !on;
+      notifyListeners();
+    }
+  }
+
+  /// Sets the daily goal: [kind] "cards" or "minutes" with [value] from 1
+  /// to 9,999, or "" for none. Reports whether it was saved.
+  Future<bool> setDailyGoal(String kind, int value) async {
+    final ok = await guard(() => golang.app.setDailyGoal(kind, value));
+    if (ok) {
+      dailyGoalKind = kind;
+      dailyGoal = kind.isEmpty ? 0 : value;
+      notifyListeners();
+    }
+    return ok;
+  }
+
+  /// Records that the user opened or dismissed the goal suggestion.
+  Future<void> markGoalSuggestionShown() async {
+    goalSuggestionShown = true;
+    notifyListeners();
+    await guard(golang.app.goalSuggestionShown);
   }
 
   Future<bool> setRolloverHour(int hour) async {

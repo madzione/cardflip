@@ -10,13 +10,14 @@ func init() {
 		fluffy.Bind("app", &AppService{a: a})
 		fluffy.Bind("decks", &DecksService{a: a})
 		fluffy.Bind("notes", &NotesService{a: a})
-		study, transfer := &StudyService{a: a}, &TransferService{a: a}
-		a.resets = []func(){study.reset, transfer.reset}
+		study, transfer, progress := &StudyService{a: a}, &TransferService{a: a}, &ProgressService{a: a}
+		a.resets = []func(){study.reset, transfer.reset, progress.reset}
 		fluffy.Bind("study", study)
 		fluffy.Bind("browse", &BrowseService{a: a})
 		fluffy.Bind("transfer", transfer)
 		fluffy.Bind("media", &MediaService{a: a})
 		fluffy.Bind("stats", &StatsService{a: a})
+		fluffy.Bind("progress", progress)
 		fluffy.Bind("mcp", newMcpService(a))
 		fluffy.Bind("sync", newSyncService(a, newSyncUI()))
 		return nil

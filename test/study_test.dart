@@ -2086,10 +2086,13 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.keyV);
       await tester.pump();
       expect(backend.played, ['voice-0']);
-      // Nothing was stored in the collection.
+      // Nothing was stored in the collection (the streak is only read).
       expect(
         go.calls.keys.where(
-          (c) => !c.startsWith('study.') && !c.startsWith('app.'),
+          (c) =>
+              !c.startsWith('study.') &&
+              !c.startsWith('app.') &&
+              c != 'progress.Today',
         ),
         isEmpty,
       );

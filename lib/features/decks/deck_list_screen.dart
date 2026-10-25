@@ -19,6 +19,7 @@ import 'package:cardflip/l10n/l10n.dart';
 import 'custom_study_dialog.dart';
 import 'deck_overview_screen.dart';
 import 'filtered_deck_screen.dart';
+import 'progress_header.dart';
 import 'sync_indicator.dart';
 
 /// "Decks", and below it the open profile's name when there are several.
@@ -136,6 +137,7 @@ class DeckListScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
+              const ProgressHeader(),
               for (final deck in model.visible) DeckRow(deck: deck),
               if (empty) const _EmptyHint(),
             ],

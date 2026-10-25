@@ -25,19 +25,20 @@ const mcpInstructions = "Cardflip is a flash card app. These tools work on the c
 // uses, so that validation, messages and undo steps are the app's
 // (design decision 5).
 type mcpTools struct {
-	s      *McpService
-	a      *app
-	notes  *NotesService
-	browse *BrowseService
-	decks  *DecksService
-	stats  *StatsService
-	media  *MediaService
+	s        *McpService
+	a        *app
+	notes    *NotesService
+	browse   *BrowseService
+	decks    *DecksService
+	stats    *StatsService
+	progress *ProgressService
+	media    *MediaService
 }
 
 func newMcpTools(s *McpService) *mcpTools {
 	a := s.a
 	return &mcpTools{s: s, a: a, notes: &NotesService{a: a}, browse: &BrowseService{a: a},
-		decks: &DecksService{a: a}, stats: &StatsService{a: a}, media: &MediaService{a: a}}
+		decks: &DecksService{a: a}, stats: &StatsService{a: a}, progress: &ProgressService{a: a}, media: &MediaService{a: a}}
 }
 
 // addMcpTools adds the agent tools to server.

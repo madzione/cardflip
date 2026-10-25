@@ -1450,4 +1450,135 @@ void pickerTests() {
       expect(await choice, 'merge');
     });
   });
+
+  group('progress header', () {
+    final header = find.byKey(const Key('progress-header'));
+
+    Future<FakeGo> pumpHeader(
+      WidgetTester tester,
+      Map<String, Object?>? progress, {
+      bool showProgress = true,
+      bool minimalist = false,
+    }) async {
+      final go = FakeGo()
+        ..tree = [deckNode(1, 'Spanish', newCount: 3)]
+        ..progress = progress;
+      go.settings = {
+        ...go.settings,
+        'showProgress': showProgress,
+        'minimalist': minimalist,
+      };
+      await pumpApp(tester);
+      return go;
+    }
+
+    String headerText(WidgetTester tester) => tester
+        .widgetList<Text>(
+          find.descendant(of: header, matching: find.byType(Text)),
+        )
+        .map((t) => t.data)
+        .join(' | ');
+
+    testWidgets('no goal: only the streak', (tester) async {
+      // No goal (spec).
+      await pumpHeader(tester, progressJson(current: 12, cards: 4));
+      expect(headerText(tester), '12 days');
+      expect(find.byKey(const Key('goal-ring')), findsNothing);
+      // Outside minimalist mode the row has a quiet fill.
+      expect(tester.widget<Material>(header).color, isNot(Colors.transparent));
+    });
+
+    testWidgets('goal in progress', (tester) async {
+      // Goal in progress (spec): 12 days and 18 / 30 cards.
+      await pumpHeader(
+        tester,
+        progressJson(current: 12, cards: 18, goalKind: 'cards', goal: 30),
+      );
+      expect(headerText(tester), '12 days | 18 / 30 cards');
+      final ring = tester.widget<CircularProgressIndicator>(
+        find.byKey(const Key('goal-ring')),
+      );
+      expect(ring.value, closeTo(0.6, 1e-9));
+    });
+
+    testWidgets('goal reached', (tester) async {
+      await pumpHeader(
+        tester,
+        progressJson(
+          current: 3,
+          minutes: 25,
+          cards: 40,
+          goalKind: 'minutes',
+          goal: 20,
+        ),
+      );
+      expect(headerText(tester), '3 days | 25 / 20 minutes');
+      expect(
+        tester
+            .widget<CircularProgressIndicator>(
+              find.byKey(const Key('goal-ring')),
+            )
+            .value,
+        1,
+      );
+    });
+
+    testWidgets('at risk', (tester) async {
+      // At risk (spec), without warning colours.
+      await pumpHeader(tester, progressJson(current: 12));
+      expect(headerText(tester), 'Study today to keep your 12-day streak');
+      final theme = Theme.of(tester.element(header));
+      final text = tester.widget<Text>(
+        find.descendant(of: header, matching: find.byType(Text)),
+      );
+      expect(text.style?.color, isNot(theme.colorScheme.error));
+      final icon = tester.widget<Icon>(
+        find.descendant(of: header, matching: find.byType(Icon)),
+      );
+      expect(icon.color, isNot(theme.colorScheme.error));
+    });
+
+    testWidgets('no streak', (tester) async {
+      // No streak (spec): 0 days, nothing about losing it.
+      await pumpHeader(tester, progressJson());
+      expect(headerText(tester), '0 days');
+    });
+
+    testWidgets('hidden', (tester) async {
+      // Hidden (spec): no streak row, and the history is not read.
+      final go = await pumpHeader(
+        tester,
+        progressJson(current: 12),
+        showProgress: false,
+      );
+      expect(header, findsNothing);
+      expect(go.callsTo('progress.Today'), isEmpty);
+      expect(find.text('Spanish'), findsOneWidget);
+    });
+
+    testWidgets('minimalist: no shadow or fill', (tester) async {
+      // Minimalist (spec).
+      await pumpHeader(tester, progressJson(current: 12), minimalist: true);
+      final m = tester.widget<Material>(header);
+      expect(m.elevation, 0);
+      expect(m.color, Colors.transparent);
+    });
+
+    testWidgets('updates after answers', (tester) async {
+      // After a session (spec): the header follows the collection.
+      final go = await pumpHeader(
+        tester,
+        progressJson(current: 12, goalKind: 'cards', goal: 30),
+      );
+      go.progress = progressJson(
+        current: 13,
+        cards: 12,
+        goalKind: 'cards',
+        goal: 30,
+      );
+      go.emitChange(kind: 'answer');
+      await tester.pumpAndSettle();
+      expect(headerText(tester), '13 days | 12 / 30 cards');
+    });
+  });
 }
