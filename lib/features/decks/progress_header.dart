@@ -3,16 +3,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:cardflip/data/scope.dart';
+import 'package:cardflip/features/progress/achievements_screen.dart';
 import 'package:cardflip/features/stats/stats_screen.dart';
 import 'package:cardflip/features/stats/stats_sections.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/l10n/l10n.dart';
 
 /// The deck list's row above the decks (progress spec, "Deck list
-/// header"): the current streak and, with a daily goal, today's progress
-/// toward it. Tapping it opens the collection statistics at Streaks. It is
-/// hidden while streaks and goals are turned off, and until the first
-/// progress is known.
+/// header"): the current streak, with a daily goal today's progress toward
+/// it, and the level. Tapping it opens the collection statistics at
+/// Streaks, tapping the level the achievements. It is hidden while streaks
+/// and goals are turned off, and until the first progress is known.
 class ProgressHeader extends StatelessWidget {
   const ProgressHeader({super.key});
 
@@ -99,6 +100,8 @@ class _Row extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(goal, style: theme.textTheme.bodyMedium),
                   ],
+                  const SizedBox(width: 8),
+                  _Level(progress: p, minimalist: minimalist),
                 ],
               ),
             ),
@@ -107,6 +110,87 @@ class _Row extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The level in a ring of its progress toward the next one, which opens
+/// the achievements.
+class _Level extends StatelessWidget {
+  const _Level({required this.progress, required this.minimalist});
+
+  final golang.Progress progress;
+  final bool minimalist;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final p = progress;
+    // A node of its own: the row around it is a button too.
+    return Semantics(
+      container: true,
+      label: l.levelHeaderSemantics(
+        p.level,
+        p.xp - p.levelStart,
+        p.nextLevelXP - p.levelStart,
+        p.level + 1,
+      ),
+      button: true,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: l.levelHeaderTooltip,
+        excludeFromSemantics: true,
+        child: InkWell(
+          key: const Key('progress-level'),
+          customBorder: const CircleBorder(),
+          onTap: () => showAchievements(context),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: SizedBox.square(
+              dimension: 24,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (!minimalist)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: colors.surfaceContainerHighest,
+                      ),
+                    ),
+                  CircularProgressIndicator(
+                    key: const Key('level-ring'),
+                    value: levelShare(p),
+                    strokeWidth: 2.5,
+                    color: colors.primary,
+                    backgroundColor: colors.surfaceContainerHighest,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: FittedBox(
+                      child: Text(
+                        '${p.level}',
+                        key: const Key('level-number'),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// How much of the way to the next level is done, from 0 to 1.
+double levelShare(golang.Progress p) {
+  final need = p.nextLevelXP - p.levelStart;
+  return need <= 0 ? 0 : ((p.xp - p.levelStart) / need).clamp(0, 1);
 }
 
 /// "18 / 30 cards", or null without a daily goal.

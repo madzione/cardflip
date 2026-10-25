@@ -41,6 +41,11 @@ class AchievementLook {
       Color(0xFF55B05A),
       Color(0xFF2E7D32),
     ),
+    'study-time': AchievementLook(
+      Icons.hourglass_bottom,
+      Color(0xFF6F7FD6),
+      Color(0xFF3949AB),
+    ),
     'daily-goal': AchievementLook(
       Icons.track_changes,
       Color(0xFFEA6464),
@@ -50,6 +55,11 @@ class AchievementLook {
       Icons.eco,
       Color(0xFF33BBAA),
       Color(0xFF00897B),
+    ),
+    'level': AchievementLook(
+      Icons.trending_up,
+      Color(0xFFF06A9B),
+      Color(0xFFC2185B),
     ),
     'comeback': AchievementLook(
       Icons.restore,
@@ -64,8 +74,10 @@ String achievementName(AppLocalizations l, String id) => switch (id) {
   'answers' => l.achievementAnswers,
   'streak' => l.achievementStreak,
   'study-days' => l.achievementStudyDays,
+  'study-time' => l.achievementStudyTime,
   'daily-goal' => l.achievementDailyGoal,
   'long-term' => l.achievementLongTerm,
+  'level' => l.achievementLevel,
   'comeback' => l.achievementComeback,
   _ => id,
 };
@@ -80,25 +92,30 @@ String tierName(AppLocalizations l, String tier) => switch (tier) {
 };
 
 /// A tier's threshold as the badge's caption shows it: "100 days",
-/// "met on 30 days", "One-time".
+/// "met on 30 days", "100 hours", "Level 25", "One-time".
 String tierThreshold(AppLocalizations l, String id, int threshold) =>
     switch (id) {
       'answers' => l.tierAnswers(threshold),
       'streak' || 'study-days' => l.tierDays(threshold),
+      'study-time' => l.tierHours(threshold),
       'daily-goal' => l.tierGoalDays(threshold),
       'long-term' => l.tierCards(threshold),
+      'level' => l.tierLevel(threshold),
       'comeback' => l.tierOneTime,
       _ => '$threshold',
     };
 
-/// A tier as a notice names it: "1,000 answers", "100-day streak".
+/// A tier as a notice names it: "1,000 answers", "100-day streak",
+/// "100 hours of study", "Level 25".
 String newTierLabel(AppLocalizations l, String id, int threshold) =>
     switch (id) {
       'answers' => l.newAnswers(threshold),
       'streak' => l.newStreak(threshold),
       'study-days' => l.newStudyDays(threshold),
+      'study-time' => l.newStudyTime(threshold),
       'daily-goal' => l.newDailyGoal(threshold),
       'long-term' => l.newLongTerm(threshold),
+      'level' => l.tierLevel(threshold),
       'comeback' => l.achievementComeback,
       _ => '${achievementName(l, id)} $threshold',
     };

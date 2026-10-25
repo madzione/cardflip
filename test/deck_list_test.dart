@@ -11,6 +11,7 @@ import 'package:cardflip/features/decks/deck_overview_screen.dart';
 import 'package:cardflip/features/decks/deck_picker.dart';
 import 'package:cardflip/features/decks/deck_progress.dart';
 import 'package:cardflip/features/import/import_screen.dart';
+import 'package:cardflip/features/progress/achievements_screen.dart';
 import 'package:cardflip/features/stats/stats_screen.dart';
 import 'package:cardflip/features/study/study_screen.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
@@ -1474,17 +1475,33 @@ void pickerTests() {
       return go;
     }
 
+    final level = find.byKey(const Key('progress-level'));
+
+    /// The row's texts but the level's.
     String headerText(WidgetTester tester) => tester
         .widgetList<Text>(
           find.descendant(of: header, matching: find.byType(Text)),
         )
+        .where((t) => t.key != const Key('level-number'))
         .map((t) => t.data)
         .join(' | ');
 
-    testWidgets('no goal: only the streak', (tester) async {
+    String levelNumber(WidgetTester tester) =>
+        tester.widget<Text>(find.byKey(const Key('level-number'))).data!;
+
+    double? levelRing(WidgetTester tester) => tester
+        .widget<CircularProgressIndicator>(find.byKey(const Key('level-ring')))
+        .value;
+
+    testWidgets('no goal: only the streak and the level', (tester) async {
       // No goal (spec).
       await pumpHeader(tester, progressJson(current: 12, cards: 4));
       expect(headerText(tester), '12 days');
+      expect(level, findsOneWidget);
+      expect(
+        find.descendant(of: level, matching: find.byType(DecoratedBox)),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('goal-ring')), findsNothing);
       // Outside minimalist mode the row has a quiet fill.
       expect(tester.widget<Material>(header).color, isNot(Colors.transparent));
@@ -1531,19 +1548,52 @@ void pickerTests() {
       expect(headerText(tester), 'Study today to keep your 12-day streak');
       final theme = Theme.of(tester.element(header));
       final text = tester.widget<Text>(
-        find.descendant(of: header, matching: find.byType(Text)),
+        find.text('Study today to keep your 12-day streak'),
       );
       expect(text.style?.color, isNot(theme.colorScheme.error));
       final icon = tester.widget<Icon>(
-        find.descendant(of: header, matching: find.byType(Icon)),
+        find.byIcon(Icons.local_fire_department_outlined),
       );
       expect(icon.color, isNot(theme.colorScheme.error));
     });
 
     testWidgets('no streak', (tester) async {
-      // No streak (spec): 0 days, nothing about losing it.
+      // No streak (spec): 0 days, nothing about losing it, and level 1.
       await pumpHeader(tester, progressJson());
       expect(headerText(tester), '0 days');
+      expect(levelNumber(tester), '1');
+      expect(levelRing(tester), 0);
+    });
+
+    testWidgets('level', (tester) async {
+      // Level (spec): level 12 at 460 of 600 XP toward level 13.
+      final semantics = tester.ensureSemantics();
+      await pumpHeader(tester, progressJson(current: 12, cards: 4, xp: 3760));
+      expect(levelNumber(tester), '12');
+      expect(levelRing(tester), closeTo(460 / 600, 1e-9));
+      expect(
+        find.bySemanticsLabel('Level 12, 460 of 600 XP to level 13'),
+        findsOneWidget,
+      );
+      semantics.dispose();
+    });
+
+    testWidgets('tapping the level opens the achievements', (tester) async {
+      // Open achievements (spec).
+      await pumpHeader(tester, progressJson(current: 12, cards: 4));
+      await tester.tap(level);
+      await tester.pumpAndSettle();
+      expect(find.byType(AchievementsScreen), findsOneWidget);
+      expect(find.byType(StatsScreen), findsNothing);
+    });
+
+    testWidgets('tapping the rest opens the statistics', (tester) async {
+      // Open statistics (spec).
+      await pumpHeader(tester, progressJson(current: 12, cards: 4));
+      await tester.tap(find.text('12 days'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StatsScreen), findsOneWidget);
+      expect(find.byType(AchievementsScreen), findsNothing);
     });
 
     testWidgets('hidden', (tester) async {
@@ -1564,6 +1614,11 @@ void pickerTests() {
       final m = tester.widget<Material>(header);
       expect(m.elevation, 0);
       expect(m.color, Colors.transparent);
+      // The level's ring has no fill either.
+      expect(
+        find.descendant(of: level, matching: find.byType(DecoratedBox)),
+        findsNothing,
+      );
     });
 
     testWidgets('updates after answers', (tester) async {

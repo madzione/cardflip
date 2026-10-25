@@ -45,6 +45,11 @@ func achievement(t *testing.T, h History, id string) AchievementStatus {
 	return all[i]
 }
 
+const (
+	minute = int64(60_000)
+	hour   = 60 * minute
+)
+
 func TestAchievements(t *testing.T) {
 	const d = 20000
 	streakDays := daily(d, repeat(1, 8), nil)
@@ -79,6 +84,13 @@ func TestAchievements(t *testing.T) {
 		{"daily goal in minutes", minutesGoal, "daily-goal", 6, nil},
 		// No goal (spec): no progress.
 		{"no goal", daily(d, repeat(50, 10), nil), "daily-goal", 0, nil},
+		// Study time tier (spec): 9 hours 50 minutes, then 15 minutes.
+		{"study time", daily(d, []int{1, 1}, []int64{590 * minute, 15 * minute}), "study-time", 10, []int{1}},
+		{"study time in whole hours", daily(d, []int{1, 1}, []int64{590 * minute, 9 * minute}), "study-time", 9, nil},
+		{"study time tiers", daily(d, repeat(1, 4), []int64{100 * hour, 400 * hour, 499 * hour, 2 * hour}),
+			"study-time", 1_001, []int{0, 0, 1, 3}},
+		// Undo below a threshold locks the tier again.
+		{"study time, undone below 10 hours", daily(d, []int{1, 1}, []int64{590 * minute, 10*minute - 1}), "study-time", 9, nil},
 		{"long-term memory", mature, "long-term", 1_000, []int{9, 99}},
 		// Comeback (spec): studying today after 15 days without study.
 		{"comeback after 15 days", daily(d, append(append([]int{1}, repeat(0, 15)...), 1), nil), "comeback", 1, []int{16}},
@@ -103,14 +115,18 @@ func TestAchievementCatalogue(t *testing.T) {
 	// Achievement catalogue (spec).
 	want := map[string][]int{
 		"answers": {100, 1_000, 10_000, 100_000}, "streak": {7, 30, 100, 365}, "study-days": {30, 100, 365, 1_000},
-		"daily-goal": {7, 30, 100}, "long-term": {100, 1_000, 5_000}, "comeback": {1},
+		"study-time": {10, 100, 500, 1_000}, "daily-goal": {7, 30, 100}, "long-term": {100, 1_000, 5_000}, "level": {5, 10, 25, 50}, "comeback": {1},
 	}
 	all := EvalAchievements(History{})
 	if len(all) != len(want) {
 		t.Fatalf("%d achievements, want %d", len(all), len(want))
 	}
 	for _, a := range all {
-		if !slices.Equal(a.Tiers, want[a.ID]) || len(a.TierNames) != len(a.Tiers) || a.Progress != 0 || len(a.Earned) != 0 {
+		progress := 0
+		if a.ID == "level" {
+			progress = 1 // levels start at 1
+		}
+		if !slices.Equal(a.Tiers, want[a.ID]) || len(a.TierNames) != len(a.Tiers) || a.Progress != progress || len(a.Earned) != 0 {
 			t.Errorf("%+v", a)
 		}
 	}
@@ -123,6 +139,13 @@ func TestAchievementCatalogue(t *testing.T) {
 	}
 	if got := names("comeback"); !slices.Equal(got, []string{Gold}) {
 		t.Errorf("comeback tiers %v", got)
+	}
+	var order []string
+	for _, a := range all {
+		order = append(order, a.ID)
+	}
+	if want := []string{"answers", "streak", "study-days", "study-time", "daily-goal", "long-term", "level", "comeback"}; !slices.Equal(order, want) {
+		t.Errorf("order %v", order)
 	}
 	if !achievement(t, History{}, "daily-goal").NeedsGoal || achievement(t, History{Goal: Goal{Kind: core.GoalCards, Value: 5}}, "daily-goal").NeedsGoal {
 		t.Error("NeedsGoal")

@@ -14,6 +14,7 @@ import (
 
 	"cardflip/golang/core"
 	"cardflip/golang/scheduler"
+	"cardflip/golang/stats"
 	"cardflip/golang/storage"
 )
 
@@ -316,6 +317,33 @@ func TestSyncAchievements(t *testing.T) {
 	for _, d := range []*e2eDevice{laptop, phone} {
 		if got := shows(d); len(got) != 0 {
 			t.Fatalf("%s again: %v", d.name, got)
+		}
+	}
+}
+
+// Both devices study and one sets the goal: after syncing they report the
+// same level (spec: XP derived from the review history, the same on every
+// synced device).
+func TestSyncLevel(t *testing.T) {
+	laptop, phone := newE2EDevice(t, "Laptop"), newE2EDevice(t, "Phone")
+	link(t, laptop, phone)
+	phone.studyNew(t, 25)
+	laptop.studyNew(t, 20)
+	check(t, laptop.app.SetDailyGoal(core.GoalCards, 40))
+	if l := must(phone.progress.Level()); l.XP != 35 || l.Level != 1 {
+		t.Fatalf("phone before syncing: %+v", l)
+	}
+	syncNow(t, laptop)
+	syncNow(t, phone)
+	syncNow(t, laptop)
+	// 45 answers, a study day and the goal of 40 cards: 75 XP, level 2.
+	want := stats.LevelStatus{Level: 2, XP: 75, LevelStart: 50, NextLevelXP: 150, FromAnswers: 45, FromStudyDays: 10, FromGoalDays: 20}
+	for _, d := range []*e2eDevice{laptop, phone} {
+		if l := must(d.progress.Level()); l != want {
+			t.Fatalf("%s after syncing: %+v\nwant %+v", d.name, l, want)
+		}
+		if p := must(d.progress.Today()); p.Level != 2 || p.XP != 75 || p.NextLevelXP != 150 {
+			t.Fatalf("%s after syncing: %+v", d.name, p)
 		}
 	}
 }

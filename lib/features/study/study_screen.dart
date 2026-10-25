@@ -257,6 +257,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// until known.
   bool? _goalReachedBefore;
 
+  /// The level when the session started, so the summary can say the
+  /// session raised it; null until known.
+  int? _levelBefore;
+
   @override
   void initState() {
     super.initState();
@@ -264,10 +268,12 @@ class _StudyScreenState extends State<StudyScreen> {
     if (progress != null) {
       _studiedBefore = progress.todayStudied;
       _goalReachedBefore = progress.goalReached;
+      _levelBefore = progress.level;
     } else if (AppScope.read(context).settings.showProgress) {
       golang.progress.today().then<void>((p) {
         _studiedBefore ??= p.todayStudied;
         _goalReachedBefore ??= p.goalReached;
+        _levelBefore ??= p.level;
       }, onError: (Object _) {});
     }
     _openSessions = AppScope.read(context).openSessions;
@@ -1442,6 +1448,7 @@ class _StudyScreenState extends State<StudyScreen> {
               state: state,
               studiedBefore: _studiedBefore,
               goalReachedBefore: _goalReachedBefore,
+              levelBefore: _levelBefore,
               onCheck: () => _run(golang.study.current),
               onContinue: onContinue,
             );
@@ -2036,16 +2043,18 @@ class _Summary extends StatelessWidget {
     required this.state,
     required this.studiedBefore,
     required this.goalReachedBefore,
+    required this.levelBefore,
     required this.onCheck,
     this.onContinue,
   });
 
   final golang.StudyState state;
 
-  /// See [_ProgressLines.studiedBefore] and
-  /// [_ProgressLines.goalReachedBefore].
+  /// See [_ProgressLines.studiedBefore],
+  /// [_ProgressLines.goalReachedBefore] and [_ProgressLines.levelBefore].
   final bool? studiedBefore;
   final bool? goalReachedBefore;
+  final int? levelBefore;
   final VoidCallback onCheck;
 
   /// Set when a learning card became due while waiting.
@@ -2072,6 +2081,7 @@ class _Summary extends StatelessWidget {
       extra: _ProgressLines(
         studiedBefore: studiedBefore,
         goalReachedBefore: goalReachedBefore,
+        levelBefore: levelBefore,
         newAchievements: true,
       ),
       action: Wrap(
@@ -2089,17 +2099,18 @@ class _Summary extends StatelessWidget {
   }
 }
 
-/// The streak and goal lines of the summary and nothing-due screens
-/// (progress spec, "Summary progress lines"), the summary's line of new
-/// achievements (study-session spec, "New achievements on the summary"),
-/// and the one-time suggestion to set a daily goal. On the summary, it
-/// celebrates the daily goal reached or achievements earned in the session
-/// (progress spec, "Celebrations"). Nothing is shown while streaks and
-/// goals are off.
+/// The streak, goal and level lines of the summary and nothing-due
+/// screens (progress spec, "Summary progress lines"), the summary's line
+/// of new achievements (study-session spec, "New achievements on the
+/// summary"), and the one-time suggestion to set a daily goal. On the
+/// summary, it celebrates the daily goal reached, achievements earned or
+/// the level raised in the session (progress spec, "Celebrations").
+/// Nothing is shown while streaks and goals are off.
 class _ProgressLines extends StatefulWidget {
   const _ProgressLines({
     required this.studiedBefore,
     this.goalReachedBefore,
+    this.levelBefore,
     this.newAchievements = false,
   });
 
@@ -2111,6 +2122,10 @@ class _ProgressLines extends StatefulWidget {
   /// and it is now, the session reached it. Null when unknown, or on the
   /// nothing-due screen, which celebrates nothing.
   final bool? goalReachedBefore;
+
+  /// The level when the session started: if it is higher now, the session
+  /// raised it. Null when unknown, or on the nothing-due screen.
+  final int? levelBefore;
 
   /// Whether to name the achievement tiers not shown yet, and mark them
   /// shown so the deck list does not tell again.
@@ -2137,15 +2152,19 @@ class _ProgressLinesState extends State<_ProgressLines> {
     AppScope.read(context).progress.load();
   }
 
-  /// "New: 1,000 answers" for the tiers new so far, which are then marked
-  /// shown; null while there are none.
-  String? _newLine(ProgressModel progress, AppLocalizations l) {
+  /// The tiers new so far, which are then marked shown, to name on the
+  /// summary: without Level tiers when [levelUp] says the level line names
+  /// the level reached (study-session spec).
+  List<golang.NewAchievement> _named(ProgressModel progress, bool levelUp) {
     final fresh = progress.newAchievements;
     if (fresh.isNotEmpty) {
       _new.addAll(fresh);
       progress.markSeen(fresh);
     }
-    return _new.isEmpty ? null : newAchievementsLine(l, _new);
+    return [
+      for (final a in _new)
+        if (!levelUp || a.id != 'level') a,
+    ];
   }
 
   @override
@@ -2160,6 +2179,11 @@ class _ProgressLinesState extends State<_ProgressLines> {
           return const SizedBox.shrink();
         }
         final l = context.l10n;
+        final levelBefore = widget.levelBefore;
+        final levelUp = levelBefore != null && levelBefore < p.level;
+        final named = widget.newAchievements
+            ? _named(app.progress, levelUp)
+            : const <golang.NewAchievement>[];
         final lines = [
           if (widget.studiedBefore == false && p.todayStudied)
             l.streakExtended(p.current)
@@ -2171,13 +2195,19 @@ class _ProgressLinesState extends State<_ProgressLines> {
             'minutes' => l.goalMinutesLeft(p.goal - p.todayMinutes),
             _ => null,
           },
-          if (widget.newAchievements) ?_newLine(app.progress, l),
+          if (levelUp)
+            l.levelReached(p.level)
+          else
+            l.levelXpLeft(p.level, p.nextLevelXP - p.xp, p.level + 1),
+          if (named.isNotEmpty) newAchievementsLine(l, named),
         ];
         if (widget.newAchievements && !_celebrated) {
           final icon = widget.goalReachedBefore == false && p.goalReached
               ? Icons.flag_outlined
-              : _new.isNotEmpty
+              : named.isNotEmpty
               ? Icons.military_tech_outlined
+              : levelUp
+              ? Icons.trending_up
               : null;
           if (icon != null) {
             _celebrated = true;

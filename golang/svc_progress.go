@@ -11,7 +11,7 @@ import (
 )
 
 // ProgressService reports the collection's streak, today's progress
-// toward the daily goal and the achievements, for the deck list and the
+// toward the daily goal, the achievements and the level, for the deck list and the
 // study summary. It is cheap to ask after every answer: the study days of
 // the whole review log are read once and then only extended by new
 // answers.
@@ -31,10 +31,11 @@ type ProgressService struct {
 	ms       []int64
 	mature   []int
 	last     core.ID
-	// result and achievements are the last results, for collection
-	// revision rev on study day today.
+	// result, achievements and level are the last results, for
+	// collection revision rev on study day today.
 	result       Progress
 	achievements []stats.AchievementStatus
+	level        stats.LevelStatus
 	rev          uint64
 	today        int
 	// recap is the last weekly recap, for recapKey.
@@ -74,6 +75,13 @@ type Progress struct {
 	GoalKind    string `json:"goalKind"`
 	Goal        int    `json:"goal"`
 	GoalReached bool   `json:"goalReached"`
+	// Level is the level, XP the experience points earned in total,
+	// LevelStart those at which Level started and NextLevelXP those at
+	// which the next level starts.
+	Level       int `json:"level"`
+	XP          int `json:"xp"`
+	LevelStart  int `json:"levelStart"`
+	NextLevelXP int `json:"nextLevelXp"`
 	// NewAchievements are the earned achievement tiers this device has not
 	// shown yet, in the order of the achievements; MarkSeen records them
 	// as shown.
@@ -113,9 +121,23 @@ func (s *ProgressService) Achievements() ([]stats.AchievementStatus, error) {
 	return s.achievements, nil
 }
 
+// Level returns the level, its XP and where they came from.
+func (s *ProgressService) Level() (stats.LevelStatus, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.refresh(); err != nil {
+		return stats.LevelStatus{}, err
+	}
+	return s.level, nil
+}
+
 // MarkSeen records achievement tiers (NewAchievement.Key) as shown on this
 // device.
-func (s *ProgressService) MarkSeen(keys []string) error {
+func (s *ProgressService) MarkSeen(keys []string) error { return s.markSeen(keys, nil) }
+
+// markSeen records achievement tiers as shown and achievements (ids) as
+// evaluated on this device.
+func (s *ProgressService) markSeen(keys, ids []string) error {
 	c, err := s.a.collection()
 	if err != nil {
 		return err
@@ -131,6 +153,11 @@ func (s *ProgressService) MarkSeen(keys []string) error {
 		}
 	}
 	st.SeenAchievements = seen
+	for _, id := range ids {
+		if !slices.Contains(st.SeenAchievementIDs, id) {
+			st.SeenAchievementIDs = append(slices.Clone(st.SeenAchievementIDs), id)
+		}
+	}
 	return c.UpdateSettings(st)
 }
 
@@ -205,7 +232,7 @@ func (s *ProgressService) week(first int) RecapWeek {
 	return w
 }
 
-// refresh brings s.result and s.achievements up to date. Callers hold
+// refresh brings s.result, s.achievements and s.level up to date. Callers hold
 // s.mu.
 func (s *ProgressService) refresh() error {
 	c, err := s.a.collection()
@@ -260,30 +287,38 @@ func (s *ProgressService) refresh() error {
 	}
 	streak := stats.Streaks(s.days, today, st.RestDaysPerWeek)
 	goal := goalOf(st)
-	s.achievements = stats.EvalAchievements(stats.History{Days: s.days, Answers: s.answers, Ms: s.ms, Mature: s.mature,
+	s.achievements, s.level = stats.EvalProgress(stats.History{Days: s.days, Answers: s.answers, Ms: s.ms, Mature: s.mature,
 		Goal: goal, Rest: st.RestDaysPerWeek})
+	// What an achievement earned before this device first evaluated it is
+	// no news: on the first evaluation (SeenAchievements nil, also after
+	// the upgrade that added achievements) every achievement's, after a
+	// later upgrade a new achievement's.
 	var unseen []NewAchievement
-	var earned []string
+	var silent, ids []string
 	for _, a := range s.achievements {
+		known := st.SeenAchievements != nil && slices.Contains(st.SeenAchievementIDs, a.ID)
+		if !known {
+			ids = append(ids, a.ID)
+		}
 		for i := range a.Earned {
 			k := a.Key(i)
-			earned = append(earned, k)
-			if !slices.Contains(st.SeenAchievements, k) {
+			if !known {
+				silent = append(silent, k)
+			} else if !slices.Contains(st.SeenAchievements, k) {
 				unseen = append(unseen, NewAchievement{ID: a.ID, Threshold: a.Tiers[i], TierName: a.TierNames[i], Key: k})
 			}
 		}
 	}
-	if st.SeenAchievements == nil {
-		// The first evaluation, also after an upgrade: what was earned
-		// before is no news.
-		if err := s.MarkSeen(earned); err != nil {
+	if len(ids) > 0 {
+		if err := s.markSeen(silent, ids); err != nil {
 			return err
 		}
-		unseen, rev = nil, c.Revision()
+		rev = c.Revision()
 	}
 	s.result = Progress{Current: streak.Current, AtRisk: streak.AtRisk, TodayStudied: streak.TodayStudied,
 		Longest: streak.Longest, TodayCards: cards, TodayMinutes: int(ms / time.Minute.Milliseconds()),
-		GoalKind: goal.Kind, Goal: goal.Value, GoalReached: goal.Met(cards, ms), NewAchievements: unseen}
+		GoalKind: goal.Kind, Goal: goal.Value, GoalReached: goal.Met(cards, ms), Level: s.level.Level, XP: s.level.XP,
+		LevelStart: s.level.LevelStart, NextLevelXP: s.level.NextLevelXP, NewAchievements: unseen}
 	s.rev, s.today = rev, today
 	return nil
 }

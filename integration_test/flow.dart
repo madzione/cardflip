@@ -250,6 +250,8 @@ Future<void> runAppFlow(
     step = 'The summary shows the streak and the goal.';
     expect(find.text('Streak extended to 1 day'), findsOneWidget);
     expect(find.text('Daily goal reached'), findsOneWidget);
+    // 3 answers, the study day and the goal: 33 XP of the 50 for level 2.
+    expect(find.text('Level 1 · 17 XP to level 2'), findsOneWidget);
     await tester.tap(find.text('Back to decks'));
     await idle();
     // Back on the overview: nothing is due and nothing is buried.
@@ -285,13 +287,38 @@ Future<void> runAppFlow(
       find.descendant(of: header, matching: find.text('3 / 3 cards')),
       findsOneWidget,
     );
+    expect(
+      tester.widget<Text>(find.byKey(const Key('level-number'))).data,
+      '1',
+    );
+    expect(
+      tester
+          .widget<CircularProgressIndicator>(
+            find.byKey(const Key('level-ring')),
+          )
+          .value,
+      closeTo(33 / 50, 1e-9),
+    );
 
-    // The achievements: nothing earned yet, with the session's progress.
+    // The achievements: nothing earned yet, with the session's progress;
+    // the header's level opens them, with the level card on top.
     step = 'The achievements screen shows the progress of the session.';
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byKey(const Key('progress-level')));
     await idle();
-    await tester.tap(find.text('Achievements'));
-    await idle();
+    final levelCard = find.byKey(const Key('level-card'));
+    for (final text in [
+      'Level 1',
+      '33 / 50 XP to level 2',
+      '3 XP',
+      '10 XP',
+      '20 XP',
+    ]) {
+      expect(
+        find.descendant(of: levelCard, matching: find.text(text)),
+        findsOneWidget,
+        reason: text,
+      );
+    }
     expect(
       tester
           .widget<Text>(find.byKey(const Key('achievement-answers-status')))

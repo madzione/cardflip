@@ -40,6 +40,11 @@ void main() {
                         stars: 2,
                       ),
                       AchievementBadge(
+                        id: 'study-time',
+                        tier: 'bronze',
+                        stars: 1,
+                      ),
+                      AchievementBadge(
                         id: 'daily-goal',
                         tier: 'gold',
                         stars: 3,
@@ -49,6 +54,7 @@ void main() {
                         tier: 'silver',
                         stars: 2,
                       ),
+                      AchievementBadge(id: 'level', tier: 'platinum', stars: 4),
                       AchievementBadge(id: 'comeback', tier: 'gold'),
                     ],
                   ),

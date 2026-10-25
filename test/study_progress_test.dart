@@ -229,6 +229,85 @@ void main() {
     expect(find.text('New: 1,000 answers, 100 study days'), findsOneWidget);
   });
 
+  testWidgets('level reached', (tester) async {
+    // Level reached (progress spec): from level 12 to 13 in the session.
+    await studyOne(
+      tester,
+      FakeGo(),
+      before: progressJson(current: 12, cards: 5, xp: 3890),
+      after: progressJson(current: 12, cards: 6, xp: 3901),
+    );
+    expect(find.text('Reached level 13'), findsOneWidget);
+    expect(find.textContaining('XP to level'), findsNothing);
+  });
+
+  testWidgets('XP left', (tester) async {
+    // XP left (progress spec): the session did not raise the level.
+    await studyOne(
+      tester,
+      FakeGo(),
+      before: progressJson(current: 12, cards: 5, xp: 3749),
+      after: progressJson(current: 12, cards: 6, xp: 3760),
+    );
+    expect(find.text('Level 12 · 140 XP to level 13'), findsOneWidget);
+    expect(find.textContaining('Reached'), findsNothing);
+  });
+
+  testWidgets('level tier with the level line', (tester) async {
+    // Level tier with the level line (study-session spec): the Level 10
+    // tier is left out of the new line but still marked shown.
+    final go = FakeGo();
+    await studyOne(
+      tester,
+      go,
+      before: progressJson(current: 12, cards: 5, xp: 2240),
+      after: progressJson(
+        current: 12,
+        cards: 6,
+        xp: 2276,
+        newAchievements: [
+          newAchievementJson('answers', 1000),
+          newAchievementJson('level', 10),
+        ],
+      ),
+    );
+    expect(find.text('Reached level 10'), findsOneWidget);
+    expect(find.text('New: 1,000 answers'), findsOneWidget);
+    expect(go.callsTo('progress.MarkSeen'), [
+      [
+        ['answers:1000', 'level:10'],
+      ],
+    ]);
+  });
+
+  testWidgets('a level tier alone is named with the level line', (
+    tester,
+  ) async {
+    final go = FakeGo();
+    await studyOne(
+      tester,
+      go,
+      before: progressJson(current: 12, cards: 5, xp: 2240),
+      after: progressJson(
+        current: 12,
+        cards: 6,
+        xp: 2251,
+        newAchievements: [newAchievementJson('level', 10)],
+      ),
+    );
+    expect(find.text('Reached level 10'), findsOneWidget);
+    expect(find.textContaining('New:'), findsNothing);
+    expect(go.callsTo('progress.MarkSeen'), hasLength(1));
+  });
+
+  testWidgets('nothing due shows the XP left', (tester) async {
+    final go = FakeGo();
+    FakeStudy(go, []);
+    go.progress = progressJson(current: 12, xp: 3760);
+    await pumpStudy(tester, loadSettings: true);
+    expect(find.text('Level 12 · 140 XP to level 13'), findsOneWidget);
+  });
+
   testWidgets('no new achievements while hidden', (tester) async {
     final go = FakeGo();
     go.settings = {...go.settings, 'showProgress': false};
@@ -340,6 +419,80 @@ void main() {
       expect(go.callsTo('app.GoalSuggestionShown'), hasLength(1));
       expect(celebration, findsOneWidget);
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('a level-up plays it', (tester) async {
+      // Level reached (progress spec): a short celebration, once.
+      final app = await finish(
+        tester,
+        FakeGo(),
+        before: progressJson(current: 12, cards: 5, xp: 3890),
+        after: progressJson(current: 12, cards: 6, xp: 3901),
+      );
+      expect(celebration, findsOneWidget);
+      expect(
+        tester
+            .widget<Icon>(
+              find.descendant(of: celebration, matching: find.byType(Icon)),
+            )
+            .icon,
+        Icons.trending_up,
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(celebration, findsNothing);
+      await app.progress.load();
+      await tester.pumpAndSettle();
+      expect(celebration, findsNothing);
+      expect(find.text('Reached level 13'), findsOneWidget);
+    });
+
+    testWidgets('the goal comes before a level-up', (tester) async {
+      await finish(
+        tester,
+        withGoal('cards', 30),
+        before: progressJson(
+          current: 3,
+          cards: 29,
+          goalKind: 'cards',
+          goal: 30,
+          xp: 140,
+        ),
+        after: progressJson(
+          current: 3,
+          cards: 30,
+          goalKind: 'cards',
+          goal: 30,
+          xp: 161,
+        ),
+      );
+      expect(find.text('Reached level 3'), findsOneWidget);
+      expect(
+        tester
+            .widget<Icon>(
+              find.descendant(of: celebration, matching: find.byType(Icon)),
+            )
+            .icon,
+        Icons.flag_outlined,
+      );
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reduce motion: a level-up without an animation', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await finish(
+        tester,
+        FakeGo(),
+        before: progressJson(current: 12, cards: 5, xp: 3890),
+        after: progressJson(current: 12, cards: 6, xp: 3901),
+      );
+      expect(find.text('Reached level 13'), findsOneWidget);
+      expect(celebration, findsNothing);
     });
 
     testWidgets('reduce motion: the line without an animation', (tester) async {

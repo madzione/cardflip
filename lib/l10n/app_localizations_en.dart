@@ -3506,6 +3506,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get streakHeaderTooltip => 'Streaks and daily goal';
 
   @override
+  String get levelHeaderTooltip => 'Level and achievements';
+
+  @override
+  String levelHeaderSemantics(int level, int done, int need, int next) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+    final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String doneString = doneNumberFormat.format(done);
+    final intl.NumberFormat needNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String needString = needNumberFormat.format(need);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return 'Level $levelString, $doneString of $needString XP to level $nextString';
+  }
+
+  @override
   String goalProgressCards(int done, int goal) {
     final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
       localeName,
@@ -3577,6 +3601,32 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get goalReached => 'Daily goal reached';
+
+  @override
+  String levelReached(int level) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+
+    return 'Reached level $levelString';
+  }
+
+  @override
+  String levelXpLeft(int level, int xp, int next) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return 'Level $levelString · $xpString XP to level $nextString';
+  }
 
   @override
   String goalCardsLeft(int count) {
@@ -4158,6 +4208,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String get achievements => 'Achievements';
 
   @override
+  String levelTitle(int level) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+
+    return 'Level $levelString';
+  }
+
+  @override
+  String levelXpProgress(int done, int need, int next) {
+    final intl.NumberFormat doneNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String doneString = doneNumberFormat.format(done);
+    final intl.NumberFormat needNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String needString = needNumberFormat.format(need);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return '$doneString / $needString XP to level $nextString';
+  }
+
+  @override
+  String xpAmount(int xp) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+
+    return '$xpString XP';
+  }
+
+  @override
+  String get xpFromAnswers => 'Answers';
+
+  @override
+  String get xpFromStudyDays => 'Study days';
+
+  @override
+  String get xpFromGoalDays => 'Daily goal met';
+
+  @override
+  String get xpFromLongTerm => 'Long-term memory';
+
+  @override
+  String get xpFromAchievements => 'Achievements';
+
+  @override
+  String get xpExplanation =>
+      'Each answer earns 1 XP, each study day 10, each day the daily goal is met 20, each card reaching long-term memory 5, and each achievement tier 25 to 200.';
+
+  @override
+  String get xpNoGoalHint =>
+      'Set a daily goal to earn 20 XP on each day you meet it.';
+
+  @override
   String get achievementAnswers => 'Answers';
 
   @override
@@ -4167,10 +4277,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get achievementStudyDays => 'Study days';
 
   @override
+  String get achievementStudyTime => 'Study time';
+
+  @override
   String get achievementDailyGoal => 'Daily goal';
 
   @override
   String get achievementLongTerm => 'Long-term memory';
+
+  @override
+  String get achievementLevel => 'Level';
 
   @override
   String get achievementComeback => 'Comeback';
@@ -4248,6 +4364,30 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String tierHours(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString hours',
+      one: '1 hour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String tierLevel(int level) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+
+    return 'Level $levelString';
+  }
+
+  @override
   String get tierOneTime => 'One-time';
 
   @override
@@ -4271,6 +4411,19 @@ class AppLocalizationsEn extends AppLocalizations {
     final String nextString = nextNumberFormat.format(next);
 
     return '$progressString / $nextString';
+  }
+
+  @override
+  String achievementProgressHours(int progress, int next) {
+    final intl.NumberFormat progressNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String progressString = progressNumberFormat.format(progress);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return '$progressString / $nextString hours';
   }
 
   @override
@@ -4330,6 +4483,21 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '1 study day',
     );
     return '$_temp0';
+  }
+
+  @override
+  String newStudyTime(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString hours',
+      one: '1 hour',
+    );
+    return '$_temp0 of study';
   }
 
   @override

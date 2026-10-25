@@ -9,6 +9,7 @@ import (
 
 	"cardflip/golang/core"
 	"cardflip/golang/scheduler"
+	"cardflip/golang/stats"
 )
 
 // progressCollection opens services on a collection of 20,000 review cards
@@ -48,11 +49,12 @@ func progressCollection(b *testing.B) *services {
 }
 
 // Results on a Ryzen 5 5600X (2026-10-25), native and WebAssembly (Node),
-// with the achievements' history aggregates:
+// with the achievements' history aggregates and XP:
 //
 //	first call       450 ms   1.8 s    (decoding the review log)
 //	study days       2.9 ms   6.2 ms   (after undo, imports and sync)
-//	after an answer  0.07 ms  0.25 ms  (with the achievements)
+//	after an answer  0.07 ms  0.42 ms  (with the achievements and XP)
+//	both passes      0.05 ms  0.21 ms  (achievements and XP alone)
 //	memory kept      12.6 MB  12.6 MB  (9.2 MB without the aggregates)
 //
 // WebAssembly: PATH=$(go env GOROOT)/lib/wasm:$PATH GOOS=js GOARCH=wasm
@@ -105,6 +107,23 @@ func BenchmarkProgressAfterAnswer(b *testing.B) {
 	}
 	if per := b.Elapsed() / time.Duration(n); per > 5*time.Millisecond {
 		b.Errorf("Today after an answer took %v, want under 5ms", per)
+	}
+}
+
+// BenchmarkProgressEval is the evaluation of the achievements and the XP
+// (both passes) over the study days of 200,000 answers with a goal, which
+// Today runs after every answer.
+func BenchmarkProgressEval(b *testing.B) {
+	s := progressCollection(b)
+	p := s.progress
+	must(p.Today())
+	h := stats.History{Days: p.days, Answers: p.answers, Ms: p.ms, Mature: p.mature, Goal: stats.Goal{Kind: core.GoalCards, Value: 20}}
+	var level stats.LevelStatus
+	for b.Loop() {
+		_, level = stats.EvalProgress(h)
+	}
+	if level.FromLongTerm == 0 || level.FromGoalDays == 0 || level.FromAchievements == 0 {
+		b.Errorf("not every source of XP covered: %+v", level)
 	}
 }
 

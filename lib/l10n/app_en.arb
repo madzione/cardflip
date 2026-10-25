@@ -3764,6 +3764,32 @@
     }
   },
   "streakHeaderTooltip": "Streaks and daily goal",
+  "levelHeaderTooltip": "Level and achievements",
+  "@levelHeaderTooltip": {
+    "description": "Tooltip of the level on the deck list header, which opens the achievements."
+  },
+  "levelHeaderSemantics": "Level {level}, {done} of {need} XP to level {next}",
+  "@levelHeaderSemantics": {
+    "description": "Screen reader label of the level on the deck list header, e.g. \"Level 12, 460 of 600 XP to level 13\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "done": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "need": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "goalProgressCards": "{done} / {goal, plural, =1{1 card} other{{goal} cards}}",
   "@goalProgressCards": {
     "description": "Today's progress toward a card goal, e.g. \"18 / 30 cards\".",
@@ -3813,6 +3839,34 @@
     }
   },
   "goalReached": "Daily goal reached",
+  "levelReached": "Reached level {level}",
+  "@levelReached": {
+    "description": "Summary line when the session raised the level, e.g. \"Reached level 13\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "levelXpLeft": "Level {level} · {xp} XP to level {next}",
+  "@levelXpLeft": {
+    "description": "Summary line: the level and the experience points (XP) left to the next one, e.g. \"Level 12 · 140 XP to level 13\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "xp": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "goalCardsLeft": "{count, plural, =1{1 more card} other{{count} more cards}} to reach today''s goal",
   "@goalCardsLeft": {
     "description": "Study summary.",
@@ -4314,6 +4368,72 @@
   "@achievements": {
     "description": "Screen and menu entry listing the achievement badges."
   },
+  "levelTitle": "Level {level}",
+  "@levelTitle": {
+    "description": "The level on the achievements screen's level card, e.g. \"Level 12\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "levelXpProgress": "{done} / {need} XP to level {next}",
+  "@levelXpProgress": {
+    "description": "XP toward the next level on the level card, e.g. \"460 / 600 XP to level 13\".",
+    "placeholders": {
+      "done": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "need": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "xpAmount": "{xp} XP",
+  "@xpAmount": {
+    "description": "An amount of experience points, e.g. \"2,900 XP\".",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "xpFromAnswers": "Answers",
+  "@xpFromAnswers": {
+    "description": "Level card: XP earned from answers."
+  },
+  "xpFromStudyDays": "Study days",
+  "@xpFromStudyDays": {
+    "description": "Level card: XP earned from study days."
+  },
+  "xpFromGoalDays": "Daily goal met",
+  "@xpFromGoalDays": {
+    "description": "Level card: XP earned from days that met the daily goal."
+  },
+  "xpFromLongTerm": "Long-term memory",
+  "@xpFromLongTerm": {
+    "description": "Level card: XP earned from cards reaching long-term memory."
+  },
+  "xpFromAchievements": "Achievements",
+  "@xpFromAchievements": {
+    "description": "Level card: XP earned from achievement tiers."
+  },
+  "xpExplanation": "Each answer earns 1 XP, each study day 10, each day the daily goal is met 20, each card reaching long-term memory 5, and each achievement tier 25 to 200.",
+  "@xpExplanation": {
+    "description": "Level card: how experience points are earned."
+  },
+  "xpNoGoalHint": "Set a daily goal to earn 20 XP on each day you meet it.",
+  "@xpNoGoalHint": {
+    "description": "Level card hint while no daily goal is set."
+  },
   "achievementAnswers": "Answers",
   "@achievementAnswers": {
     "description": "Achievement name: number of answers."
@@ -4326,6 +4446,10 @@
   "@achievementStudyDays": {
     "description": "Achievement name: number of days with study."
   },
+  "achievementStudyTime": "Study time",
+  "@achievementStudyTime": {
+    "description": "Achievement name: hours spent answering."
+  },
   "achievementDailyGoal": "Daily goal",
   "@achievementDailyGoal": {
     "description": "Achievement name: days the daily goal was met."
@@ -4333,6 +4457,10 @@
   "achievementLongTerm": "Long-term memory",
   "@achievementLongTerm": {
     "description": "Achievement name: cards whose interval reached 21 days."
+  },
+  "achievementLevel": "Level",
+  "@achievementLevel": {
+    "description": "Achievement name: the level reached."
   },
   "achievementComeback": "Comeback",
   "@achievementComeback": {
@@ -4394,6 +4522,26 @@
       }
     }
   },
+  "tierHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "@tierHours": {
+    "description": "The threshold of a Study time tier, e.g. \"100 hours\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "tierLevel": "Level {level}",
+  "@tierLevel": {
+    "description": "The threshold of a Level tier, also naming it in a notice, e.g. \"Level 25\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "tierOneTime": "One-time",
   "@tierOneTime": {
     "description": "The only tier of the Comeback achievement."
@@ -4422,6 +4570,20 @@
   "achievementProgress": "{progress} / {next}",
   "@achievementProgress": {
     "description": "Progress toward the next tier, e.g. \"640 / 1,000\".",
+    "placeholders": {
+      "progress": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "achievementProgressHours": "{progress} / {next} hours",
+  "@achievementProgressHours": {
+    "description": "Progress toward the next Study time tier, e.g. \"10 / 100 hours\".",
     "placeholders": {
       "progress": {
         "type": "int",
@@ -4480,6 +4642,16 @@
   "newStudyDays": "{count, plural, =1{1 study day} other{{count} study days}}",
   "@newStudyDays": {
     "description": "A new Study days tier in a notice.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "newStudyTime": "{count, plural, =1{1 hour} other{{count} hours}} of study",
+  "@newStudyTime": {
+    "description": "A new Study time tier in a notice, e.g. \"100 hours of study\".",
     "placeholders": {
       "count": {
         "type": "int",

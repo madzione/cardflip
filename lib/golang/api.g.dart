@@ -1155,6 +1155,10 @@ class GoProgress {
   Future<List<AchievementStatus>> achievements() async =>
       (await emitter.request<Object?>('progress.Achievements', []) as List<dynamic>?)?.map((x0) => AchievementStatus.fromJson(x0)).toList() ?? const <AchievementStatus>[];
 
+  /// Level returns the level, its XP and where they came from.
+  Future<LevelStatus> level() async =>
+      LevelStatus.fromJson(await emitter.request<Object?>('progress.Level', []));
+
   /// MarkSeen records achievement tiers (NewAchievement.Key) as shown on this
   /// device.
   Future<void> markSeen(List<String> keys) =>
@@ -6779,6 +6783,74 @@ class AchievementStatus {
   String toString() => 'AchievementStatus(id: $id, tiers: $tiers, tierNames: $tierNames, progress: $progress, earned: $earned, needsGoal: $needsGoal)';
 }
 
+/// LevelStatus is the level, its XP and where they came from.
+class LevelStatus {
+  const LevelStatus({
+    required this.level,
+    required this.xp,
+    required this.levelStart,
+    required this.nextLevelXP,
+    required this.fromAnswers,
+    required this.fromStudyDays,
+    required this.fromGoalDays,
+    required this.fromLongTerm,
+    required this.fromAchievements,
+  });
+
+  factory LevelStatus.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return LevelStatus(
+      level: m['level'] as int,
+      xp: m['xp'] as int,
+      levelStart: m['levelStart'] as int,
+      nextLevelXP: m['nextLevelXp'] as int,
+      fromAnswers: m['fromAnswers'] as int,
+      fromStudyDays: m['fromStudyDays'] as int,
+      fromGoalDays: m['fromGoalDays'] as int,
+      fromLongTerm: m['fromLongTerm'] as int,
+      fromAchievements: m['fromAchievements'] as int,
+    );
+  }
+
+  final int level;
+
+  final int xp;
+
+  /// LevelStart is the XP at which Level started, NextLevelXP those at
+  /// which the next one starts.
+  final int levelStart;
+
+  final int nextLevelXP;
+
+  /// The XP from answers, study days, days that met the daily goal,
+  /// cards reaching long-term memory and achievement tiers; they add up
+  /// to XP.
+  final int fromAnswers;
+
+  final int fromStudyDays;
+
+  final int fromGoalDays;
+
+  final int fromLongTerm;
+
+  final int fromAchievements;
+
+  Map<String, Object?> toJson() => {
+    'level': level,
+    'xp': xp,
+    'levelStart': levelStart,
+    'nextLevelXp': nextLevelXP,
+    'fromAnswers': fromAnswers,
+    'fromStudyDays': fromStudyDays,
+    'fromGoalDays': fromGoalDays,
+    'fromLongTerm': fromLongTerm,
+    'fromAchievements': fromAchievements,
+  };
+
+  @override
+  String toString() => 'LevelStatus(level: $level, xp: $xp, levelStart: $levelStart, nextLevelXP: $nextLevelXP, fromAnswers: $fromAnswers, fromStudyDays: $fromStudyDays, fromGoalDays: $fromGoalDays, fromLongTerm: $fromLongTerm, fromAchievements: $fromAchievements)';
+}
+
 /// Progress is the streak and today's progress toward the daily goal.
 class Progress {
   const Progress({
@@ -6791,6 +6863,10 @@ class Progress {
     required this.goalKind,
     required this.goal,
     required this.goalReached,
+    required this.level,
+    required this.xp,
+    required this.levelStart,
+    required this.nextLevelXP,
     required this.newAchievements,
   });
 
@@ -6806,6 +6882,10 @@ class Progress {
       goalKind: m['goalKind'] as String,
       goal: m['goal'] as int,
       goalReached: m['goalReached'] as bool,
+      level: m['level'] as int,
+      xp: m['xp'] as int,
+      levelStart: m['levelStart'] as int,
+      nextLevelXP: m['nextLevelXp'] as int,
       newAchievements: (m['newAchievements'] as List<dynamic>?)?.map((x0) => NewAchievement.fromJson(x0)).toList() ?? const <NewAchievement>[],
     );
   }
@@ -6837,6 +6917,17 @@ class Progress {
 
   final bool goalReached;
 
+  /// Level is the level, XP the experience points earned in total,
+  /// LevelStart those at which Level started and NextLevelXP those at
+  /// which the next level starts.
+  final int level;
+
+  final int xp;
+
+  final int levelStart;
+
+  final int nextLevelXP;
+
   /// NewAchievements are the earned achievement tiers this device has not
   /// shown yet, in the order of the achievements; MarkSeen records them
   /// as shown.
@@ -6852,11 +6943,15 @@ class Progress {
     'goalKind': goalKind,
     'goal': goal,
     'goalReached': goalReached,
+    'level': level,
+    'xp': xp,
+    'levelStart': levelStart,
+    'nextLevelXp': nextLevelXP,
     'newAchievements': [for (final x0 in newAchievements) x0.toJson()],
   };
 
   @override
-  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached, newAchievements: $newAchievements)';
+  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached, level: $level, xp: $xp, levelStart: $levelStart, nextLevelXP: $nextLevelXP, newAchievements: $newAchievements)';
 }
 
 /// NewAchievement is an earned achievement tier not shown yet.

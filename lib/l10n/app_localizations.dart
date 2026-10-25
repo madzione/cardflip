@@ -4448,6 +4448,18 @@ abstract class AppLocalizations {
   /// **'Streaks and daily goal'**
   String get streakHeaderTooltip;
 
+  /// Tooltip of the level on the deck list header, which opens the achievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Level and achievements'**
+  String get levelHeaderTooltip;
+
+  /// Screen reader label of the level on the deck list header, e.g. "Level 12, 460 of 600 XP to level 13".
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}, {done} of {need} XP to level {next}'**
+  String levelHeaderSemantics(int level, int done, int need, int next);
+
   /// Today's progress toward a card goal, e.g. "18 / 30 cards".
   ///
   /// In en, this message translates to:
@@ -4477,6 +4489,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Daily goal reached'**
   String get goalReached;
+
+  /// Summary line when the session raised the level, e.g. "Reached level 13".
+  ///
+  /// In en, this message translates to:
+  /// **'Reached level {level}'**
+  String levelReached(int level);
+
+  /// Summary line: the level and the experience points (XP) left to the next one, e.g. "Level 12 · 140 XP to level 13".
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level} · {xp} XP to level {next}'**
+  String levelXpLeft(int level, int xp, int next);
 
   /// Study summary.
   ///
@@ -5270,6 +5294,66 @@ abstract class AppLocalizations {
   /// **'Achievements'**
   String get achievements;
 
+  /// The level on the achievements screen's level card, e.g. "Level 12".
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String levelTitle(int level);
+
+  /// XP toward the next level on the level card, e.g. "460 / 600 XP to level 13".
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {need} XP to level {next}'**
+  String levelXpProgress(int done, int need, int next);
+
+  /// An amount of experience points, e.g. "2,900 XP".
+  ///
+  /// In en, this message translates to:
+  /// **'{xp} XP'**
+  String xpAmount(int xp);
+
+  /// Level card: XP earned from answers.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers'**
+  String get xpFromAnswers;
+
+  /// Level card: XP earned from study days.
+  ///
+  /// In en, this message translates to:
+  /// **'Study days'**
+  String get xpFromStudyDays;
+
+  /// Level card: XP earned from days that met the daily goal.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily goal met'**
+  String get xpFromGoalDays;
+
+  /// Level card: XP earned from cards reaching long-term memory.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-term memory'**
+  String get xpFromLongTerm;
+
+  /// Level card: XP earned from achievement tiers.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get xpFromAchievements;
+
+  /// Level card: how experience points are earned.
+  ///
+  /// In en, this message translates to:
+  /// **'Each answer earns 1 XP, each study day 10, each day the daily goal is met 20, each card reaching long-term memory 5, and each achievement tier 25 to 200.'**
+  String get xpExplanation;
+
+  /// Level card hint while no daily goal is set.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a daily goal to earn 20 XP on each day you meet it.'**
+  String get xpNoGoalHint;
+
   /// Achievement name: number of answers.
   ///
   /// In en, this message translates to:
@@ -5288,6 +5372,12 @@ abstract class AppLocalizations {
   /// **'Study days'**
   String get achievementStudyDays;
 
+  /// Achievement name: hours spent answering.
+  ///
+  /// In en, this message translates to:
+  /// **'Study time'**
+  String get achievementStudyTime;
+
   /// Achievement name: days the daily goal was met.
   ///
   /// In en, this message translates to:
@@ -5299,6 +5389,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long-term memory'**
   String get achievementLongTerm;
+
+  /// Achievement name: the level reached.
+  ///
+  /// In en, this message translates to:
+  /// **'Level'**
+  String get achievementLevel;
 
   /// Achievement name: studying again after 14 or more days without study.
   ///
@@ -5354,6 +5450,18 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 card} other{{count} cards}}'**
   String tierCards(int count);
 
+  /// The threshold of a Study time tier, e.g. "100 hours".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}}'**
+  String tierHours(int count);
+
+  /// The threshold of a Level tier, also naming it in a notice, e.g. "Level 25".
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String tierLevel(int level);
+
   /// The only tier of the Comeback achievement.
   ///
   /// In en, this message translates to:
@@ -5377,6 +5485,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{progress} / {next}'**
   String achievementProgress(int progress, int next);
+
+  /// Progress toward the next Study time tier, e.g. "10 / 100 hours".
+  ///
+  /// In en, this message translates to:
+  /// **'{progress} / {next} hours'**
+  String achievementProgressHours(int progress, int next);
 
   /// No description provided for @achievementAllEarned.
   ///
@@ -5425,6 +5539,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 study day} other{{count} study days}}'**
   String newStudyDays(int count);
+
+  /// A new Study time tier in a notice, e.g. "100 hours of study".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour} other{{count} hours}} of study'**
+  String newStudyTime(int count);
 
   /// A new Daily goal tier in a notice.
   ///

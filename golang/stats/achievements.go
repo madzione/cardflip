@@ -1,6 +1,10 @@
 package stats
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"time"
+)
 
 // History is what the achievements are computed from: the whole review
 // history by study day.
@@ -17,6 +21,9 @@ type History struct {
 	// Goal is the current daily goal, Rest the rest days per week.
 	Goal Goal
 	Rest int
+	// XP[i] are the XP earned on Days[i]. EvalAchievements sets them for
+	// the achievements marked FromXP.
+	XP []int
 }
 
 // Achievement is a milestone of the review history with tiers.
@@ -27,6 +34,9 @@ type Achievement struct {
 	// Eval returns the progress toward tiers (the achievement's) and, for
 	// each tier reached, the study day on which it was.
 	Eval func(h History, tiers []int) (progress int, earned []int)
+	// FromXP marks an achievement that reads History.XP: it is evaluated
+	// after the others, whose tiers earn XP, and its own tiers earn none.
+	FromXP bool
 }
 
 // ComebackGap is the number of days without study after which studying
@@ -59,6 +69,16 @@ var Achievements = []Achievement{
 	{ID: "study-days", Tiers: []int{30, 100, 365, 1_000}, Eval: func(h History, tiers []int) (int, []int) {
 		return cumulative(h.Days, func(int) int { return 1 }, tiers)
 	}},
+	{ID: "study-time", Tiers: []int{10, 100, 500, 1_000}, Eval: func(h History, tiers []int) (int, []int) {
+		// Tiers and progress are hours.
+		hour := int(time.Hour.Milliseconds())
+		ms := make([]int, len(tiers))
+		for i, t := range tiers {
+			ms[i] = t * hour
+		}
+		total, earned := cumulative(h.Days, func(i int) int { return int(h.Ms[i]) }, ms)
+		return total / hour, earned
+	}},
 	{ID: "daily-goal", Tiers: []int{7, 30, 100}, Eval: func(h History, tiers []int) (int, []int) {
 		if h.Goal.Kind == "" {
 			return 0, nil
@@ -72,6 +92,16 @@ var Achievements = []Achievement{
 	}},
 	{ID: "long-term", Tiers: []int{100, 1_000, 5_000}, Eval: func(h History, tiers []int) (int, []int) {
 		return cumulative(h.Mature, func(int) int { return 1 }, tiers)
+	}},
+	{ID: "level", Tiers: []int{5, 10, 25, 50}, FromXP: true, Eval: func(h History, tiers []int) (int, []int) {
+		// Tiers and progress are levels.
+		xp := make([]int, len(tiers))
+		for i, l := range tiers {
+			xp[i] = LevelXP(l)
+		}
+		total, earned := cumulative(h.Days, func(i int) int { return h.XP[i] }, xp)
+		level, _, _ := LevelOf(total)
+		return level, earned
 	}},
 	{ID: "comeback", Tiers: []int{1}, Eval: func(h History, _ []int) (int, []int) {
 		for i := len(h.Days) - 1; i > 0; i-- {
@@ -136,15 +166,77 @@ func (a AchievementStatus) Key(i int) string { return fmt.Sprintf("%s:%d", a.ID,
 
 // EvalAchievements returns the status of every achievement.
 func EvalAchievements(h History) []AchievementStatus {
+	out, _ := EvalProgress(h)
+	return out
+}
+
+// EvalProgress returns the status of every achievement and the level. It
+// evaluates the achievements in two passes: first those whose tiers earn
+// XP, then, with the XP of each study day, those marked FromXP.
+func EvalProgress(h History) ([]AchievementStatus, LevelStatus) {
+	progress := make([]int, len(Achievements))
+	earned := make([][]int, len(Achievements))
+	pass := func(fromXP bool) {
+		for i, a := range Achievements {
+			if a.FromXP == fromXP {
+				progress[i], earned[i] = a.Eval(h, a.Tiers)
+			}
+		}
+	}
+	pass(false)
+	var level LevelStatus
+	h.XP, level = xpOf(h, earned)
+	pass(true)
 	out := make([]AchievementStatus, 0, len(Achievements))
-	for _, a := range Achievements {
-		progress, earned := a.Eval(h, a.Tiers)
-		st := AchievementStatus{ID: a.ID, Tiers: a.Tiers, TierNames: a.TierNames(), Progress: progress,
-			Earned: make([]string, len(earned)), NeedsGoal: a.ID == "daily-goal" && h.Goal.Kind == ""}
-		for i, day := range earned {
-			st.Earned[i] = Date(day)
+	for i, a := range Achievements {
+		st := AchievementStatus{ID: a.ID, Tiers: a.Tiers, TierNames: a.TierNames(), Progress: progress[i],
+			Earned: make([]string, len(earned[i])), NeedsGoal: a.ID == "daily-goal" && h.Goal.Kind == ""}
+		for j, day := range earned[i] {
+			st.Earned[j] = Date(day)
 		}
 		out = append(out, st)
 	}
-	return out
+	return out, level
+}
+
+// xpOf returns the XP earned on each of h.Days and the level they reach,
+// with earned the study days each achievement's tiers were reached on
+// (empty for those marked FromXP).
+func xpOf(h History, earned [][]int) ([]int, LevelStatus) {
+	xp := make([]int, len(h.Days))
+	var l LevelStatus
+	for i, n := range h.Answers {
+		xp[i] = n*XPPerAnswer + XPPerStudyDay
+		l.FromAnswers += n * XPPerAnswer
+		l.FromStudyDays += XPPerStudyDay
+		if h.Goal.Met(n, h.Ms[i]) {
+			xp[i] += XPPerGoalDay
+			l.FromGoalDays += XPPerGoalDay
+		}
+	}
+	// Every mature day and earned tier's is a study day. Mature is as
+	// long as the cards, so it is walked together with Days.
+	i := 0
+	for _, day := range h.Mature {
+		for i < len(h.Days) && h.Days[i] < day {
+			i++
+		}
+		if i < len(h.Days) && h.Days[i] == day {
+			xp[i] += XPPerLongTerm
+			l.FromLongTerm += XPPerLongTerm
+		}
+	}
+	for k, a := range Achievements {
+		names := a.TierNames()
+		for j, day := range earned[k] {
+			if i, found := slices.BinarySearch(h.Days, day); found && !a.FromXP {
+				xp[i] += XPPerTier[names[j]]
+				l.FromAchievements += XPPerTier[names[j]]
+			}
+		}
+	}
+	total := l.FromAnswers + l.FromStudyDays + l.FromGoalDays + l.FromLongTerm + l.FromAchievements
+	l.Level, l.LevelStart, l.NextLevelXP = LevelOf(total)
+	l.XP = total
+	return xp, l
 }

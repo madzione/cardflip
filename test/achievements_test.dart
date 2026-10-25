@@ -54,6 +54,12 @@ void main() {
       );
       expect(badge(tester, id).tier, isNull, reason: id);
     }
+    Future<void> scrollTo(String id, double delta) => tester.scrollUntilVisible(
+      find.byKey(Key('achievement-$id')),
+      delta,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await scrollTo('answers', -100);
     expect(tile(tester, 'answers'), [
       'Answers',
       'Bronze · 100 answers',
@@ -64,6 +70,7 @@ void main() {
       'Bronze · met on 7 days',
       'Set a daily goal to start',
     ]);
+    await scrollTo('comeback', 100);
     expect(tile(tester, 'comeback'), [
       'Comeback',
       'Gold · One-time',
@@ -125,6 +132,86 @@ void main() {
     expect(badge(tester, 'comeback').stars, 0);
     expect(badge(tester, 'long-term').tier, isNull);
     expect(tile(tester, 'long-term').last, '40 / 100');
+  });
+
+  group('level card', () {
+    final card = find.byKey(const Key('level-card'));
+
+    /// The card's texts.
+    List<String?> texts(WidgetTester tester) => tester
+        .widgetList<Text>(
+          find.descendant(of: card, matching: find.byType(Text)),
+        )
+        .map((t) => t.data)
+        .toList();
+
+    testWidgets('breakdown', (tester) async {
+      // Breakdown (spec): level 12, 460 / 600 XP toward level 13 and each
+      // source.
+      final go = FakeGo()
+        ..level = levelJson(
+          answers: 2900,
+          studyDays: 300,
+          goalDays: 200,
+          longTerm: 135,
+          achievements: 225,
+        );
+      go.settings = {...go.settings, 'dailyGoalKind': 'cards', 'dailyGoal': 30};
+      await openAchievements(tester);
+      expect(texts(tester), [
+        'Level 12',
+        '460 / 600 XP to level 13',
+        'Answers',
+        '2,900 XP',
+        'Study days',
+        '300 XP',
+        'Daily goal met',
+        '200 XP',
+        'Long-term memory',
+        '135 XP',
+        'Achievements',
+        '225 XP',
+        startsWith('Each answer earns 1 XP'),
+      ]);
+      expect(
+        tester
+            .widget<LinearProgressIndicator>(find.byKey(const Key('level-bar')))
+            .value,
+        closeTo(460 / 600, 1e-9),
+      );
+      expect(find.byKey(const Key('level-goal-hint')), findsNothing);
+      // Above the badges.
+      expect(
+        tester.getBottomLeft(card).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('achievement-answers'))).dy,
+        ),
+      );
+    });
+
+    testWidgets('no goal', (tester) async {
+      // No goal (spec): 0 XP from goal days, and a goal earns more.
+      FakeGo().level = levelJson(answers: 40, studyDays: 20);
+      await openAchievements(tester);
+      expect(texts(tester), containsAllInOrder(['Daily goal met', '0 XP']));
+      expect(
+        find.text('Set a daily goal to earn 20 XP on each day you meet it.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('level-goal-hint')));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
+
+    testWidgets('follows the collection', (tester) async {
+      final go = FakeGo()..progress = progressJson(xp: 40);
+      await openAchievements(tester);
+      expect(texts(tester).first, 'Level 1');
+      go.progress = progressJson(xp: 60);
+      go.emitChange(kind: 'answer');
+      await tester.pumpAndSettle();
+      expect(texts(tester).take(2), ['Level 2', '10 / 100 XP to level 3']);
+    });
   });
 
   testWidgets('the Streaks statistics open it', (tester) async {

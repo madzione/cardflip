@@ -17,9 +17,13 @@ Linux, Windows, macOS, Android, iOS and the web.
   allowing up to two rest days a week if you like, and an optional daily
   goal of cards or minutes shows how far you are today, with a short
   celebration when you reach it. Achievements mark milestones in bronze,
-  silver, gold and platinum: answers, your longest streak, study days, days
-  you met your goal, cards in long-term memory, and coming back after a
-  break. At the start of each week, a recap compares last week's study
+  silver, gold and platinum: answers, your longest streak, study days, hours
+  spent studying, days you met your goal, cards in long-term memory, the
+  level you reached, and coming back after a break. Every session also earns
+  experience points (XP): 1 per answer, 10 per study day, 20 per day you met
+  your goal, 5 per card reaching long-term memory, and 25 to 200 per
+  achievement tier. They add up to a level, which needs 50 more XP for each
+  step (level 10 at 2,250 XP) and has no top. At the start of each week, a recap compares last week's study
   days, answers, study time and retention with the week before. All of it
   comes from your review history, so imports and other devices count too,
   with their real dates, and you can turn it off. Each deck also shows how

@@ -62,41 +62,54 @@ func (s *services) advance(d time.Duration) { *s.clock = s.clock.Add(d) }
 func TestProgressToday(t *testing.T) {
 	s, _ := opened(t)
 	// No reviews: no streak and nothing at risk.
-	if p := must(s.progress.Today()); !reflect.DeepEqual(p, Progress{}) {
+	// Never studied (spec): level 1 with 0 / 50 XP.
+	if p := must(s.progress.Today()); !reflect.DeepEqual(p, Progress{Level: 1, NextLevelXP: 50}) {
 		t.Fatalf("no reviews: %+v", p)
 	}
 	// Goal in progress (spec, card goal): 2 of 3 cards.
 	check(t, s.app.SetDailyGoal(core.GoalCards, 3))
 	studyNew(t, s, 2, 1000)
-	want := Progress{Current: 1, TodayStudied: true, Longest: 1, TodayCards: 2, GoalKind: core.GoalCards, Goal: 3}
+	want := Progress{Current: 1, TodayStudied: true, Longest: 1, TodayCards: 2, GoalKind: core.GoalCards, Goal: 3,
+		Level: 1, XP: 12, NextLevelXP: 50}
 	if p := must(s.progress.Today()); !reflect.DeepEqual(p, want) {
 		t.Fatalf("goal in progress: %+v\nwant              %+v", p, want)
 	}
 	// Goal reached.
 	studyNew(t, s, 1, 1000)
-	want.TodayCards, want.GoalReached = 3, true
+	want.TodayCards, want.GoalReached, want.XP = 3, true, 33
 	if p := must(s.progress.Today()); !reflect.DeepEqual(p, want) {
 		t.Fatalf("goal reached: %+v\nwant          %+v", p, want)
 	}
 	// At risk: the next day, before studying.
 	s.advance(24 * time.Hour)
-	want = Progress{Current: 1, AtRisk: true, Longest: 1, GoalKind: core.GoalCards, Goal: 3}
+	want = Progress{Current: 1, AtRisk: true, Longest: 1, GoalKind: core.GoalCards, Goal: 3, Level: 1, XP: 33, NextLevelXP: 50}
 	if p := must(s.progress.Today()); !reflect.DeepEqual(p, want) {
 		t.Fatalf("at risk: %+v\nwant     %+v", p, want)
 	}
 	// Undo the only answer of the day (spec): the streak goes back to at
-	// risk; redo brings it back.
+	// risk and the XP 11 lower; redo brings both back.
 	studyNew(t, s, 1, 1000)
-	if p := must(s.progress.Today()); p.Current != 2 || !p.TodayStudied || p.TodayCards != 1 {
+	if p := must(s.progress.Today()); p.Current != 2 || !p.TodayStudied || p.TodayCards != 1 || p.XP != 44 {
 		t.Fatalf("second day: %+v", p)
 	}
 	must(s.study.Undo())
-	if p := must(s.progress.Today()); p.Current != 1 || !p.AtRisk || p.TodayStudied || p.TodayCards != 0 || p.Longest != 1 {
+	if p := must(s.progress.Today()); p.Current != 1 || !p.AtRisk || p.TodayStudied || p.TodayCards != 0 || p.Longest != 1 || p.XP != 33 {
 		t.Fatalf("after undo: %+v", p)
 	}
 	must(s.app.Redo())
-	if p := must(s.progress.Today()); p.Current != 2 || p.TodayCards != 1 || p.Longest != 2 {
+	if p := must(s.progress.Today()); p.Current != 2 || p.TodayCards != 1 || p.Longest != 2 || p.XP != 44 {
 		t.Fatalf("after redo: %+v", p)
+	}
+	// A goal change recomputes the goal days: with a goal of one card both
+	// days met it.
+	check(t, s.app.SetDailyGoal(core.GoalCards, 1))
+	want2 := stats.LevelStatus{Level: 2, XP: 64, LevelStart: 50, NextLevelXP: 150,
+		FromAnswers: 4, FromStudyDays: 20, FromGoalDays: 40}
+	if l := must(s.progress.Level()); l != want2 {
+		t.Fatalf("level after a goal change: %+v\nwant %+v", l, want2)
+	}
+	if p := must(s.progress.Today()); p.Level != 2 || p.XP != 64 || p.LevelStart != 50 || p.NextLevelXP != 150 {
+		t.Fatalf("after a goal change: %+v", p)
 	}
 	// Minute goal (spec): 16 minutes of 15.
 	check(t, s.app.SetDailyGoal(core.GoalMinutes, 15))
@@ -247,6 +260,9 @@ func TestProgressAchievements(t *testing.T) {
 	if seen := c.Settings().SeenAchievements; seen == nil || len(seen) != 0 {
 		t.Fatalf("seen after the first evaluation: %#v", seen)
 	}
+	if ids := c.Settings().SeenAchievementIDs; len(ids) != len(stats.Achievements) {
+		t.Fatalf("evaluated after the first evaluation: %v", ids)
+	}
 	// An import of 99 days of history up to today earns three tiers at
 	// once, with their dates in the history.
 	days := make([]int, 99)
@@ -254,7 +270,7 @@ func TestProgressAchievements(t *testing.T) {
 		days[i] = 98 - i
 	}
 	importHistory(t, s, "history", 10, 1000, days...)
-	want := []string{"streak:7", "streak:30", "study-days:30"}
+	want := []string{"streak:7", "streak:30", "study-days:30", "level:5"}
 	if got := newKeys(must(s.progress.Today())); !slices.Equal(got, want) {
 		t.Fatalf("after the import: %v\nwant %v", got, want)
 	}
@@ -270,7 +286,7 @@ func TestProgressAchievements(t *testing.T) {
 		t.Fatalf("daily goal without a goal: %+v", a)
 	}
 	check(t, s.app.SetDailyGoal(core.GoalCards, 1))
-	want = append(want, "daily-goal:7", "daily-goal:30")
+	want = []string{"streak:7", "streak:30", "study-days:30", "daily-goal:7", "daily-goal:30", "level:5", "level:10"}
 	if got := newKeys(must(s.progress.Today())); !slices.Equal(got, want) {
 		t.Fatalf("with a goal: %v\nwant %v", got, want)
 	}
@@ -314,7 +330,7 @@ func TestProgressAchievementsAfterUpgrade(t *testing.T) {
 	if p := must(s.progress.Today()); len(p.NewAchievements) != 0 {
 		t.Fatalf("first evaluation after an upgrade: %+v", p.NewAchievements)
 	}
-	if seen := c.Settings().SeenAchievements; !slices.Equal(seen, []string{"streak:7", "streak:30", "study-days:30"}) {
+	if seen := c.Settings().SeenAchievements; !slices.Equal(seen, []string{"streak:7", "streak:30", "study-days:30", "level:5"}) {
 		t.Fatalf("seen: %v", seen)
 	}
 	// The achievements screen still shows them with their dates.
@@ -325,8 +341,47 @@ func TestProgressAchievementsAfterUpgrade(t *testing.T) {
 	file := must(s.transfer.ExportBackup())
 	other, _ := opened(t)
 	check(t, other.transfer.Restore(must(other.transfer.StageBytes(file.Name, file.Data)).ID))
-	if seen := must(other.app.a.collection()).Settings().SeenAchievements; len(seen) != 3 {
+	if seen := must(other.app.a.collection()).Settings().SeenAchievements; len(seen) != 4 {
 		t.Fatalf("seen after restore: %v", seen)
+	}
+}
+
+func TestProgressNewAchievementAfterUpgrade(t *testing.T) {
+	s, _ := opened(t)
+	c := must(s.app.a.collection())
+	// 40 days of one 15-minute answer each: 10 hours of study and 540 XP
+	// (level 5), from a version that knew neither achievement.
+	days := make([]int, 40)
+	for i := range days {
+		days[i] = i
+	}
+	importHistory(t, s, "old", 10, 15*60_000, days...)
+	st := c.Settings()
+	st.SeenAchievements = []string{"streak:7", "streak:30", "study-days:30"}
+	st.SeenAchievementIDs = []string{"answers", "streak", "study-days", "daily-goal", "long-term", "comeback"}
+	check(t, c.UpdateSettings(st))
+	s.progress = &ProgressService{a: s.app.a}
+	if p := must(s.progress.Today()); len(p.NewAchievements) != 0 {
+		t.Fatalf("first evaluation after the upgrade: %+v", p.NewAchievements)
+	}
+	if a := achievementOf(t, s, "study-time"); a.Progress != 10 || len(a.Earned) != 1 {
+		t.Fatalf("study time: %+v", a)
+	}
+	st = c.Settings()
+	if !slices.Equal(st.SeenAchievements, []string{"streak:7", "streak:30", "study-days:30", "study-time:10", "level:5"}) ||
+		len(st.SeenAchievementIDs) != len(stats.Achievements) {
+		t.Fatalf("seen %v, evaluated %v", st.SeenAchievements, st.SeenAchievementIDs)
+	}
+	// A tier earned later is announced as usual: 60 earlier days of two
+	// hours each earn Study time 100 hours (and more).
+	more := make([]int, 60)
+	for i := range more {
+		more[i] = 40 + i
+	}
+	importHistory(t, s, "more", 10, 2*60*60_000, more...)
+	got := newKeys(must(s.progress.Today()))
+	if !slices.Contains(got, "study-time:100") || slices.Contains(got, "study-time:10") || slices.Contains(got, "level:5") {
+		t.Fatalf("new after more history: %v", got)
 	}
 }
 
@@ -407,7 +462,7 @@ func TestProgressAchievementsImportedHistory(t *testing.T) {
 		t.Fatalf("study days: %+v", a)
 	}
 	// Import earns many (spec): all tiers are new at once.
-	want := []string{"answers:100", "answers:1000", "streak:7", "streak:30", "study-days:30"}
+	want := []string{"answers:100", "answers:1000", "streak:7", "streak:30", "study-days:30", "level:5"}
 	if got := newKeys(must(s.progress.Today())); !slices.Equal(got, want) {
 		t.Fatalf("new: %v\nwant %v", got, want)
 	}

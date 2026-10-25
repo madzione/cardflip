@@ -697,6 +697,10 @@ type Settings struct {
 	// were first evaluated, when everything earned until then is marked
 	// seen; it is saved even when empty to tell the two apart.
 	SeenAchievements []string `json:"seenAchievements"`
+	// SeenAchievementIDs are the achievements this device has evaluated.
+	// The earned tiers of one missing from it, such as a new achievement
+	// after an upgrade, are marked seen without telling the user.
+	SeenAchievementIDs []string `json:"seenAchievementIds,omitempty"`
 	// DeckProgressInList shows a thin progress bar under each deck of the
 	// deck list.
 	DeckProgressInList bool `json:"deckProgressInList,omitempty"`

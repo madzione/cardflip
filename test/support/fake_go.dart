@@ -715,6 +715,10 @@ class FakeGo {
   /// takes the tiers it marks out of its `newAchievements`.
   Map<String, Object?>? progress;
 
+  /// What `progress.Level` answers, see [levelJson]; while null, the XP
+  /// of [progress], all from answers.
+  Map<String, Object?>? level;
+
   /// What `progress.WeeklyRecap` answers, see [recapJson]; null for no
   /// recap.
   Map<String, Object?>? recap;
@@ -1246,6 +1250,10 @@ class FakeGo {
       return null;
     });
     handle('progress.Achievements', (_) => achievements);
+    handle(
+      'progress.Level',
+      (_) => level ?? levelJson(answers: progress?['xp'] as int? ?? 0),
+    );
     handle('progress.MarkSeen', (args) {
       final keys = List<String>.from(args[0] as List);
       if (progress case final p?) {
@@ -2572,9 +2580,9 @@ const statsSections = [
 ];
 
 /// JSON for `progress.Today`: a [current] streak, [cards] and [minutes]
-/// today, and a goal of [goal] [goalKind] ("cards" or "minutes"; "" for
-/// none). Today is studied when cards were answered; the streak is at risk
-/// otherwise.
+/// today, a goal of [goal] [goalKind] ("cards" or "minutes"; "" for none)
+/// and [xp] XP. Today is studied when cards were answered; the streak is at
+/// risk otherwise.
 Map<String, Object?> progressJson({
   int current = 0,
   int cards = 0,
@@ -2582,9 +2590,11 @@ Map<String, Object?> progressJson({
   String goalKind = '',
   int goal = 0,
   int? longest,
+  int xp = 0,
   List<Map<String, Object?>> newAchievements = const [],
 }) => {
   'newAchievements': newAchievements,
+  ...levelFields(xp),
   'current': current,
   'atRisk': current > 0 && cards == 0,
   'todayStudied': cards > 0,
@@ -2600,21 +2610,54 @@ Map<String, Object?> progressJson({
   },
 };
 
+/// The level of [xp] XP as Go reports it: 50 × n XP from level n to n + 1.
+Map<String, Object?> levelFields(int xp) {
+  var level = 1;
+  while (25 * (level + 1) * level <= xp) {
+    level++;
+  }
+  return {
+    'level': level,
+    'xp': xp,
+    'levelStart': 25 * level * (level - 1),
+    'nextLevelXp': 25 * (level + 1) * level,
+  };
+}
+
+/// JSON for `progress.Level`: the XP from each source and their level.
+Map<String, Object?> levelJson({
+  int answers = 0,
+  int studyDays = 0,
+  int goalDays = 0,
+  int longTerm = 0,
+  int achievements = 0,
+}) => {
+  ...levelFields(answers + studyDays + goalDays + longTerm + achievements),
+  'fromAnswers': answers,
+  'fromStudyDays': studyDays,
+  'fromGoalDays': goalDays,
+  'fromLongTerm': longTerm,
+  'fromAchievements': achievements,
+};
+
 /// The tiers of each achievement, as Go defines them.
 const achievementTiers = {
   'answers': [100, 1000, 10000, 100000],
   'streak': [7, 30, 100, 365],
   'study-days': [30, 100, 365, 1000],
+  'study-time': [10, 100, 500, 1000],
   'daily-goal': [7, 30, 100],
   'long-term': [100, 1000, 5000],
+  'level': [5, 10, 25, 50],
   'comeback': [1],
 };
 
 /// JSON for one entry of `progress.Achievements`: achievement [id] with
-/// [progress] and the dates its first tiers were [earned] ("2006-01-02").
+/// [progress] (by default none, level 1 for Level) and the dates its first
+/// tiers were [earned] ("2006-01-02").
 Map<String, Object?> achievementJson(
   String id, {
-  int progress = 0,
+  int? progress,
   List<String> earned = const [],
   bool needsGoal = false,
 }) {
@@ -2625,7 +2668,7 @@ Map<String, Object?> achievementJson(
     'tierNames': tiers.length == 1
         ? ['gold']
         : ['bronze', 'silver', 'gold', 'platinum'].sublist(0, tiers.length),
-    'progress': progress,
+    'progress': progress ?? (id == 'level' ? 1 : 0),
     'earned': earned,
     'needsGoal': needsGoal,
   };
