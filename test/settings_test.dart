@@ -506,6 +506,17 @@ void main() {
       ]);
       expect(tester.widget<SwitchListTile>(show).value, isFalse);
 
+      // Show deck progress in the deck list: off by default, and saved.
+      final inList = find.byKey(const Key('deck-progress-in-list'));
+      await scrollTo(tester, inList);
+      expect(tester.widget<SwitchListTile>(inList).value, isFalse);
+      await tester.tap(inList);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetDeckProgressInList'), [
+        [true],
+      ]);
+      expect(tester.widget<SwitchListTile>(inList).value, isTrue);
+
       // Set a goal (spec): 20 minutes.
       final goal = find.byKey(const Key('daily-goal'));
       await scrollTo(tester, goal);

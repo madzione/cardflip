@@ -412,3 +412,151 @@ func TestProgressAchievementsImportedHistory(t *testing.T) {
 		t.Fatalf("new: %v\nwant %v", got, want)
 	}
 }
+
+// importDay imports one card answered n times on the calendar date day at
+// hour: the first failed answers Again, the next learning ones as a new
+// card, the rest Good, each taking ms milliseconds.
+func importDay(t *testing.T, s *services, day time.Time, hour, n, failed, learning int, ms int64) {
+	t.Helper()
+	c := must(s.app.a.collection())
+	var basic core.ID
+	for _, nt := range c.NoteTypes() {
+		if nt.Name == "Basic" {
+			basic = nt.ID
+		}
+	}
+	y, m, d := day.Date()
+	at := time.Date(y, m, d, hour, 0, 0, 0, time.Local)
+	guid := fmt.Sprint("day", at.Unix())
+	var history []core.ImportReview
+	for i := range n {
+		r := core.ImportReview{Time: at.Add(time.Duration(i) * time.Second), Rating: scheduler.Good,
+			StateBefore: scheduler.Review, IvlBefore: 5, IvlAfter: 10, DurationMs: ms, Source: fmt.Sprintf("anki:%s-%d", guid, i)}
+		switch {
+		case i < failed:
+			r.Rating = scheduler.Again
+		case i < failed+learning:
+			r.StateBefore, r.IvlBefore = scheduler.New, 0
+		}
+		history = append(history, r)
+	}
+	b := &core.ImportBatch{
+		NoteTypes: []core.ImportNoteType{{Key: "basic", ExistingID: basic}},
+		Notes: []core.ImportNote{{TypeKey: "basic", GUID: guid, DeckName: "Default", Fields: []string{guid, "a"},
+			Cards: []core.ImportCard{{DeckName: "Default", History: history,
+				State: scheduler.CardState{State: scheduler.Review, Due: s.clock.AddDate(0, 0, 1), ScheduledDays: 10}}}}},
+	}
+	if _, err := c.Import(b, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// date is noon of a calendar date in October 2026.
+func date(day int) time.Time { return time.Date(2026, 10, day, 12, 0, 0, 0, time.Local) }
+
+func TestWeeklyRecapMonday(t *testing.T) {
+	s, _ := opened(t)
+	*s.clock = date(19) // a Monday
+	// New week (spec): last week (12 to 18 October) 6 study days with 420
+	// answers in 95 minutes and 91 % retention, the week before 4 days
+	// with 300 answers.
+	importDay(t, s, date(12), 10, 70, 0, 20, 13_600) // 20 learning answers
+	importDay(t, s, date(13), 10, 70, 36, 0, 13_600)
+	for day := 14; day <= 17; day++ {
+		importDay(t, s, date(day), 10, 70, 0, 0, 13_600)
+	}
+	for day := 5; day <= 8; day++ {
+		importDay(t, s, date(day), 10, 75, 0, 0, 10_000)
+	}
+	importDay(t, s, date(4), 10, 9, 9, 0, 1000) // before both weeks
+	studyNew(t, s, 3, 1000)                     // this week
+
+	r := must(s.progress.WeeklyRecap(1))
+	if r == nil {
+		t.Fatal("no recap")
+	}
+	if r.WeekStart != scheduler.DayNumber(date(19), 4) {
+		t.Fatalf("week start = %d", r.WeekStart)
+	}
+	if l := r.Last; l.StudyDays != 6 || l.Answers != 420 || l.Minutes != 95 || l.Retention == nil || *l.Retention != 364.0/400 {
+		t.Fatalf("last week = %+v", l)
+	}
+	if b := r.Before; b.StudyDays != 4 || b.Answers != 300 || b.Minutes != 50 || b.Retention == nil || *b.Retention != 1 {
+		t.Fatalf("week before = %+v", b)
+	}
+	// Answering this week keeps the recap; an import into last week
+	// changes it.
+	studyNew(t, s, 1, 1000)
+	if again := must(s.progress.WeeklyRecap(1)); again != r {
+		t.Fatalf("recap computed again: %+v", again)
+	}
+	importDay(t, s, date(18), 10, 5, 0, 0, 1000)
+	if r := must(s.progress.WeeklyRecap(1)); r.Last.StudyDays != 7 || r.Last.Answers != 425 {
+		t.Fatalf("after import = %+v", r.Last)
+	}
+}
+
+func TestWeeklyRecapSunday(t *testing.T) {
+	s, _ := opened(t)
+	*s.clock = date(19)                          // a Monday
+	importDay(t, s, date(18), 10, 1, 0, 0, 1000) // Sunday
+	importDay(t, s, date(11), 10, 2, 0, 0, 1000) // Sunday
+	importDay(t, s, date(5), 10, 4, 0, 0, 1000)  // Monday
+	// Weeks starting on Monday: 12 to 18 and 5 to 11 October.
+	if r := must(s.progress.WeeklyRecap(1)); r.Last.StudyDays != 1 || r.Last.Answers != 1 || r.Before.StudyDays != 2 || r.Before.Answers != 6 {
+		t.Fatalf("Monday weeks = %+v", r)
+	}
+	// Weeks starting on Sunday: the week began yesterday; 11 to 17 and 4
+	// to 10 October.
+	r := must(s.progress.WeeklyRecap(0))
+	if r.WeekStart != scheduler.DayNumber(date(18), 4) || r.Last.Answers != 2 || r.Before.Answers != 4 || r.Before.StudyDays != 1 {
+		t.Fatalf("Sunday weeks = %+v", r)
+	}
+}
+
+func TestWeeklyRecapRollover(t *testing.T) {
+	s, _ := opened(t)
+	// With the rollover at 04:00, an answer at 02:00 on Monday 12 October
+	// belongs to Sunday's study day, in the week before.
+	importDay(t, s, date(12), 2, 1, 0, 0, 1000)
+	importDay(t, s, date(12), 5, 2, 0, 0, 1000)
+	*s.clock = date(19)
+	if r := must(s.progress.WeeklyRecap(1)); r.Last.Answers != 2 || r.Before.Answers != 1 {
+		t.Fatalf("recap = %+v", r)
+	}
+	// At 03:00 on Monday the study day is still Sunday: the new week has
+	// not begun.
+	*s.clock = time.Date(2026, 10, 19, 3, 0, 0, 0, time.Local)
+	r := must(s.progress.WeeklyRecap(1))
+	if r == nil || r.WeekStart != scheduler.DayNumber(date(12), 4) || r.Last.Answers != 1 || r.Before.StudyDays != 0 {
+		t.Fatalf("before rollover = %+v", r)
+	}
+}
+
+func TestWeeklyRecapNothingLastWeek(t *testing.T) {
+	s, _ := opened(t)
+	*s.clock = date(19)
+	if r := must(s.progress.WeeklyRecap(1)); r != nil {
+		t.Fatalf("no reviews: %+v", r)
+	}
+	// Nothing studied last week (spec): no recap, even with study before.
+	importDay(t, s, date(6), 10, 3, 0, 0, 1000)
+	studyNew(t, s, 2, 1000)
+	if r := must(s.progress.WeeklyRecap(1)); r != nil {
+		t.Fatalf("recap = %+v", r)
+	}
+}
+
+func TestWeeklyRecapAcrossMonths(t *testing.T) {
+	s, _ := opened(t)
+	// The weeks before Monday 2 November reach back into October; the
+	// recap reads only the review log months from there on.
+	importDay(t, s, date(20), 10, 4, 1, 0, 1000)
+	importDay(t, s, date(31), 10, 4, 2, 0, 1000)
+	importDay(t, s, time.Date(2026, 9, 30, 10, 0, 0, 0, time.Local), 10, 4, 4, 0, 1000)
+	*s.clock = time.Date(2026, 11, 2, 12, 0, 0, 0, time.Local)
+	r := must(s.progress.WeeklyRecap(1))
+	if r == nil || *r.Last.Retention != 0.5 || *r.Before.Retention != 0.75 {
+		t.Fatalf("recap = %+v", r)
+	}
+}

@@ -20,9 +20,11 @@ import 'package:cardflip/l10n/l10n.dart';
 
 import 'custom_study_dialog.dart';
 import 'deck_overview_screen.dart';
+import 'deck_progress.dart';
 import 'filtered_deck_screen.dart';
 import 'progress_header.dart';
 import 'sync_indicator.dart';
+import 'weekly_recap.dart';
 
 /// "Decks", and below it the open profile's name when there are several.
 class _Title extends StatelessWidget {
@@ -139,7 +141,7 @@ class DeckListScreen extends StatelessWidget {
           ],
         ),
         body: ListenableBuilder(
-          listenable: model,
+          listenable: Listenable.merge([model, settings]),
           builder: (context, _) {
             if (model.loading) {
               return const Center(child: CircularProgressIndicator());
@@ -160,11 +162,15 @@ class DeckListScreen extends StatelessWidget {
               );
             }
             final empty = model.decks.every((d) => d.depth > 0 || d.cards == 0);
+            final progress =
+                settings.showProgress && settings.deckProgressInList;
             return ListView(
               padding: const EdgeInsets.only(bottom: 24),
               children: [
+                const WeeklyRecap(),
                 const ProgressHeader(),
-                for (final deck in model.visible) DeckRow(deck: deck),
+                for (final deck in model.visible)
+                  DeckRow(deck: deck, showProgress: progress),
                 if (empty) const _EmptyHint(),
               ],
             );
@@ -290,12 +296,17 @@ enum _DeckAction {
   delete,
 }
 
-/// One deck: name, due counts and actions. Tapping it opens the deck's
-/// overview; the menu's Study starts studying directly.
+/// One deck: name, due counts and actions, and with [showProgress] a thin
+/// progress bar under the name. Tapping it opens the deck's overview; the
+/// menu's Study starts studying directly.
 class DeckRow extends StatelessWidget {
-  const DeckRow({super.key, required this.deck});
+  const DeckRow({super.key, required this.deck, this.showProgress = false});
 
   final golang.DeckNode deck;
+
+  /// "Show deck progress in the deck list", while streaks and goals are
+  /// shown (app-shell spec, "Deck progress in the deck list").
+  final bool showProgress;
 
   /// Narrower rows show the counts below the deck's name.
   static const _sideBySideWidth = 280.0;
@@ -370,6 +381,16 @@ class DeckRow extends StatelessWidget {
                 key: Key('counts-${deck.id}'),
                 counts: deck.counts,
               );
+              final bar = showProgress
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4, right: 8),
+                      child: DeckProgressBar(
+                        key: Key('deck-progress-${deck.id}'),
+                        progress: deck.progress,
+                        height: 4,
+                      ),
+                    )
+                  : null;
               // Too narrow for both side by side, as on a phone with a large
               // UI size: the counts go below the name.
               final stacked = constraints.maxWidth < _sideBySideWidth;
@@ -421,9 +442,16 @@ class DeckRow extends StatelessWidget {
                                 alignment: AlignmentDirectional.centerStart,
                                 child: counts,
                               ),
+                              ?bar,
                             ],
                           )
-                        : name,
+                        : bar == null
+                        ? name
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [name, bar],
+                          ),
                   ),
                   if (!stacked) counts,
                   PopupMenuButton<_DeckAction>(

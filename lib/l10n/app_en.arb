@@ -4175,6 +4175,101 @@
   },
   "showStreaksAndGoals": "Show streaks and goals",
   "showStreaksAndGoalsHelp": "On the deck list and after studying. Only on this device.",
+  "deckProgressInList": "Show deck progress in the deck list",
+  "deckProgressInListHelp": "A thin bar of new, learning, young and mature cards under each deck. Only on this device.",
+  "deckProgress": "Progress",
+  "@deckProgress": {
+    "description": "Deck overview: heading of the bar of the deck's new, learning, young and mature cards."
+  },
+  "deckProgressMature": "{percent} mature",
+  "@deckProgressMature": {
+    "description": "Deck overview and deck list: the share of the deck's cards (without suspended ones) that are mature, such as \"62% mature\".",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "deckProgressLegend": "{state}: {count}",
+  "@deckProgressLegend": {
+    "description": "Deck overview: one part of the progress bar, such as \"Young: 12\".",
+    "placeholders": {
+      "state": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "recapTitle": "Last week",
+  "@recapTitle": {
+    "description": "Deck list: heading of the weekly recap, which compares the previous week with the week before."
+  },
+  "recapTooltip": "Last week compared with the week before. Opens the statistics.",
+  "recapDismiss": "Hide until next week",
+  "recapStudyDays": "{count, plural, =1{1 study day} other{{count} study days}}",
+  "@recapStudyDays": {
+    "description": "Weekly recap.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "recapAnswers": "{count, plural, =1{1 answer} other{{count} answers}}",
+  "@recapAnswers": {
+    "description": "Weekly recap.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "recapMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "@recapMinutes": {
+    "description": "Weekly recap: time spent studying.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "recapRetention": "{percent} retention",
+  "@recapRetention": {
+    "description": "Weekly recap: the true retention of the week's reviews, such as \"91% retention\".",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "recapWeekBefore": "The week before: {value}",
+  "@recapWeekBefore": {
+    "description": "Weekly recap: tooltip of a number's change, with the number of the week before.",
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "recapPoints": "{change} pts",
+  "@recapPoints": {
+    "description": "Weekly recap: the change of the retention in percentage points, such as \"+3 pts\".",
+    "placeholders": {
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "recapSame": "same",
+  "@recapSame": {
+    "description": "Weekly recap: a number did not change from the week before."
+  },
   "dailyGoal": "Daily goal",
   "dailyGoalNone": "None",
   "@dailyGoalNone": {

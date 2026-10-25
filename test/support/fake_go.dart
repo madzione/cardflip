@@ -154,6 +154,7 @@ Map<String, Object?> deckNode(
   bool collapsed = false,
   int cards = 0,
   bool filtered = false,
+  Map<String, int> progress = const {},
 }) {
   final parts = fullName.split('::');
   return {
@@ -166,9 +167,31 @@ Map<String, Object?> deckNode(
     'collapsed': collapsed,
     'counts': {'new': newCount, 'learning': learning, 'review': review},
     'cards': cards,
+    'progress': {
+      'new': progress['new'] ?? 0,
+      'learning': progress['learning'] ?? 0,
+      'young': progress['young'] ?? 0,
+      'mature': progress['mature'] ?? 0,
+    },
     'options': deckOptionsJson(),
     'filtered': filtered,
   };
+}
+
+/// JSON for a weekly recap starting on study day [weekStart]; [last] and
+/// [before] are (study days, answers, minutes, retention).
+Map<String, Object?> recapJson({
+  int weekStart = 20750,
+  (int, int, int, double?) last = (6, 420, 95, 0.91),
+  (int, int, int, double?) before = (4, 300, 70, 0.88),
+}) {
+  Map<String, Object?> week((int, int, int, double?) w) => {
+    'studyDays': w.$1,
+    'answers': w.$2,
+    'minutes': w.$3,
+    'retention': w.$4,
+  };
+  return {'weekStart': weekStart, 'last': week(last), 'before': week(before)};
 }
 
 /// JSON for what deleting a deck removes.
@@ -425,6 +448,8 @@ class FakeGo {
     'dailyGoal': 0,
     'restDaysPerWeek': 0,
     'goalSuggestionShown': false,
+    'deckProgressInList': false,
+    'recapDismissedWeek': 0,
   };
 
   /// The profiles `app.Profiles` lists, as `{'id', 'name'}` maps. Like Go,
@@ -689,6 +714,10 @@ class FakeGo {
   /// fails, so the deck list shows no streak. Like Go, `progress.MarkSeen`
   /// takes the tiers it marks out of its `newAchievements`.
   Map<String, Object?>? progress;
+
+  /// What `progress.WeeklyRecap` answers, see [recapJson]; null for no
+  /// recap.
+  Map<String, Object?>? recap;
 
   /// What `progress.Achievements` answers, see [achievementJson]; by
   /// default every achievement is locked without progress.
@@ -1202,6 +1231,15 @@ class FakeGo {
     handle('progress.Today', (_) {
       if (progress case final p?) return p;
       throw 'no progress';
+    });
+    handle('progress.WeeklyRecap', (_) => recap);
+    handle('app.SetDeckProgressInList', (args) {
+      settings = {...settings, 'deckProgressInList': args[0]};
+      return null;
+    });
+    handle('app.DismissRecap', (args) {
+      settings = {...settings, 'recapDismissedWeek': args[0]};
+      return null;
     });
     handle('app.SetShowProgress', (args) {
       settings = {...settings, 'showProgress': args[0]};

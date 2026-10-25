@@ -197,6 +197,17 @@ Future<void> runAppFlow(
       tester.widget<Text>(find.byKey(const Key('overview-new'))).data,
       '3',
     );
+    // Deck progress: three new cards, none mature.
+    step = 'The overview shows the deck progress before studying.';
+    final deckProgress = find.byKey(const Key('deck-progress'));
+    expect(
+      find.descendant(of: deckProgress, matching: find.text('0% mature')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: deckProgress, matching: find.text('New: 3')),
+      findsOneWidget,
+    );
     await tester.tap(find.text('Study now'));
     await idle();
     expect(rich('hola'), findsOneWidget);
@@ -245,6 +256,24 @@ Future<void> runAppFlow(
     step = 'The overview shows nothing due and nothing buried.';
     expect(find.text('Nothing is due right now.'), findsOneWidget);
     expect(find.textContaining('buried'), findsNothing);
+    // The progress bar follows the session: no new cards left, and the
+    // parts are Go's counts of the deck.
+    step = 'The overview progress bar shows the studied cards.';
+    final afterStudy = (await golang.decks.tree()).first.progress;
+    expect(afterStudy.new_, 0);
+    expect(afterStudy.learning + afterStudy.young + afterStudy.mature, 3);
+    for (final label in [
+      'New: 0',
+      'Learning: ${afterStudy.learning}',
+      'Young: ${afterStudy.young}',
+      'Mature: ${afterStudy.mature}',
+    ]) {
+      expect(
+        find.descendant(of: deckProgress, matching: find.text(label)),
+        findsOneWidget,
+        reason: label,
+      );
+    }
     await tester.pageBack();
     await idle();
     step = 'The deck list header shows the new streak and goal progress.';

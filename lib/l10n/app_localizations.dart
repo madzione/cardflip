@@ -5102,6 +5102,96 @@ abstract class AppLocalizations {
   /// **'On the deck list and after studying. Only on this device.'**
   String get showStreaksAndGoalsHelp;
 
+  /// No description provided for @deckProgressInList.
+  ///
+  /// In en, this message translates to:
+  /// **'Show deck progress in the deck list'**
+  String get deckProgressInList;
+
+  /// No description provided for @deckProgressInListHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A thin bar of new, learning, young and mature cards under each deck. Only on this device.'**
+  String get deckProgressInListHelp;
+
+  /// Deck overview: heading of the bar of the deck's new, learning, young and mature cards.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get deckProgress;
+
+  /// Deck overview and deck list: the share of the deck's cards (without suspended ones) that are mature, such as "62% mature".
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} mature'**
+  String deckProgressMature(String percent);
+
+  /// Deck overview: one part of the progress bar, such as "Young: 12".
+  ///
+  /// In en, this message translates to:
+  /// **'{state}: {count}'**
+  String deckProgressLegend(String state, int count);
+
+  /// Deck list: heading of the weekly recap, which compares the previous week with the week before.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week'**
+  String get recapTitle;
+
+  /// No description provided for @recapTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week compared with the week before. Opens the statistics.'**
+  String get recapTooltip;
+
+  /// No description provided for @recapDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide until next week'**
+  String get recapDismiss;
+
+  /// Weekly recap.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 study day} other{{count} study days}}'**
+  String recapStudyDays(int count);
+
+  /// Weekly recap.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 answer} other{{count} answers}}'**
+  String recapAnswers(int count);
+
+  /// Weekly recap: time spent studying.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute} other{{count} minutes}}'**
+  String recapMinutes(int count);
+
+  /// Weekly recap: the true retention of the week's reviews, such as "91% retention".
+  ///
+  /// In en, this message translates to:
+  /// **'{percent} retention'**
+  String recapRetention(String percent);
+
+  /// Weekly recap: tooltip of a number's change, with the number of the week before.
+  ///
+  /// In en, this message translates to:
+  /// **'The week before: {value}'**
+  String recapWeekBefore(String value);
+
+  /// Weekly recap: the change of the retention in percentage points, such as "+3 pts".
+  ///
+  /// In en, this message translates to:
+  /// **'{change} pts'**
+  String recapPoints(String change);
+
+  /// Weekly recap: a number did not change from the week before.
+  ///
+  /// In en, this message translates to:
+  /// **'same'**
+  String get recapSame;
+
   /// No description provided for @dailyGoal.
   ///
   /// In en, this message translates to:

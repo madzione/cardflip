@@ -210,26 +210,48 @@ func TrueRetention(d *Data) RetentionTable {
 	}
 	for i := range d.Reviews {
 		r := &d.Reviews[i]
-		if r.Kind != Young && r.Kind != Mature {
-			continue
-		}
 		ago := d.Today - r.Day
 		for j, p := range periods {
-			if ago < p.to || ago > p.from {
-				continue
+			if ago >= p.to && ago <= p.from {
+				rows[j].add(r)
 			}
-			if r.Kind == Mature {
-				rows[j].Mature.add(r.Passed())
-			} else {
-				rows[j].Young.add(r.Passed())
-			}
-			rows[j].Total.add(r.Passed())
 		}
 	}
 	for i := range rows {
-		rows[i].Young.finish()
-		rows[i].Mature.finish()
-		rows[i].Total.finish()
+		rows[i].finish()
 	}
 	return RetentionTable{Desired: d.Retention, Rows: rows}
+}
+
+// RetentionOfDays returns the true retention, counted as in TrueRetention,
+// of the study days first to last (scheduler.DayNumber), both included.
+// The row has no period name.
+func RetentionOfDays(d *Data, first, last int) RetentionRow {
+	var row RetentionRow
+	for i := range d.Reviews {
+		if r := &d.Reviews[i]; r.Day >= first && r.Day <= last {
+			row.add(r)
+		}
+	}
+	row.finish()
+	return row
+}
+
+// add counts r if it is an answer to a young or mature card.
+func (row *RetentionRow) add(r *Review) {
+	switch r.Kind {
+	case Young:
+		row.Young.add(r.Passed())
+	case Mature:
+		row.Mature.add(r.Passed())
+	default:
+		return
+	}
+	row.Total.add(r.Passed())
+}
+
+func (row *RetentionRow) finish() {
+	row.Young.finish()
+	row.Mature.finish()
+	row.Total.finish()
 }

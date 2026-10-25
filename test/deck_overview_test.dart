@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cardflip/features/decks/deck_options_screen.dart';
 import 'package:cardflip/features/decks/deck_overview_screen.dart';
+import 'package:cardflip/features/decks/deck_progress.dart';
+import 'package:cardflip/features/stats/stats_charts.dart';
 import 'package:cardflip/features/study/study_screen.dart';
 
 import 'support/fake_go.dart';
@@ -50,6 +52,17 @@ void handleStudy(FakeGo go) => go.handle(
     'leechSuspended': false,
   },
 );
+
+/// The flex and colour of each part of the deck progress bar.
+List<(int, Color)> barParts(WidgetTester tester) => [
+  for (final e in tester.widgetList<Expanded>(
+    find.descendant(
+      of: find.byType(DeckProgressBar),
+      matching: find.byType(Expanded),
+    ),
+  ))
+    (e.flex, (e.child as ColoredBox).color),
+];
 
 void main() {
   testWidgets('overview before studying', (tester) async {
@@ -207,5 +220,77 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DeckOverviewScreen), findsNothing);
     expect(find.text('Other'), findsOneWidget);
+  });
+
+  group('deck progress', () {
+    const spanish = {'new': 18, 'learning': 4, 'young': 12, 'mature': 56};
+
+    testWidgets('shows the parts and the mature share', (tester) async {
+      final go = FakeGo();
+      go.tree = [
+        deckNode(1, 'Default'),
+        deckNode(2, 'Spanish', cards: 100, review: 3, progress: spanish),
+      ];
+      await pumpApp(tester);
+      await openOverview(tester, 'Spanish');
+      // Deck progress (app-shell spec): of 90 cards that are not
+      // suspended, 18 new, 4 learning, 12 young and 56 mature.
+      expect(find.text('62% mature'), findsOneWidget);
+      for (final label in [
+        'New: 18',
+        'Learning: 4',
+        'Young: 12',
+        'Mature: 56',
+      ]) {
+        expect(find.text(label), findsOneWidget);
+      }
+      const colors = StatsColors.light;
+      expect(barParts(tester), [
+        (18, colors.newCards),
+        (4, colors.learning),
+        (12, colors.young),
+        (56, colors.mature),
+      ]);
+    });
+
+    testWidgets('an empty deck has an empty bar', (tester) async {
+      FakeGo().tree = [deckNode(1, 'Default')];
+      await pumpApp(tester);
+      await openOverview(tester, 'Default');
+      expect(find.text('0% mature'), findsOneWidget);
+      expect(find.byType(DeckProgressBar), findsOneWidget);
+      expect(barParts(tester), isEmpty);
+    });
+
+    testWidgets('uses the dark statistics colours', (tester) async {
+      final go = FakeGo();
+      go.settings = {...go.settings, 'theme': 'dark'};
+      go.tree = [deckNode(1, 'Default', cards: 90, progress: spanish)];
+      await pumpApp(tester);
+      await openOverview(tester, 'Default');
+      const colors = StatsColors.dark;
+      expect(barParts(tester).map((p) => p.$2), [
+        colors.newCards,
+        colors.learning,
+        colors.young,
+        colors.mature,
+      ]);
+    });
+
+    testWidgets('follows the deck list', (tester) async {
+      final go = FakeGo();
+      go.tree = [
+        deckNode(1, 'Default', cards: 2, progress: {'new': 2}),
+      ];
+      await pumpApp(tester);
+      await openOverview(tester, 'Default');
+      expect(find.text('0% mature'), findsOneWidget);
+      go.tree = [
+        deckNode(1, 'Default', cards: 2, progress: {'young': 1, 'mature': 1}),
+      ];
+      go.emitChange();
+      await tester.pumpAndSettle();
+      expect(find.text('50% mature'), findsOneWidget);
+    });
   });
 }

@@ -23,7 +23,7 @@ var localSettings = []string{
 	"LastNoteTypeID", "LastDeckID", "LastDeckByNoteType", "LastDueDate", "CurrentDeckID", "RecentDecks",
 	"BrowserColumns", "BrowserMode", "BrowserSplit", "SavedSearches", "DefaultSearch",
 	"Backup", "PersistenceNoticeShown", "HideProgress", "GoalSuggestionShown",
-	"SeenAchievements",
+	"SeenAchievements", "DeckProgressInList", "RecapDismissedWeek",
 }
 
 // syncedSettingsEqual reports whether a and b agree on every synced field.

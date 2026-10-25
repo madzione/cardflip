@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:cardflip/data/scope.dart';
+import 'package:cardflip/features/progress/celebration.dart';
 
 import 'study_test.dart' show FakeStudy, pumpStudy, studyCard;
 import 'support/fake_go.dart';
@@ -243,5 +244,172 @@ void main() {
     );
     expect(find.textContaining('New:'), findsNothing);
     expect(go.callsTo('progress.MarkSeen'), isEmpty);
+  });
+
+  group('celebration', () {
+    final celebration = find.byType(Celebration);
+
+    /// Answers the session's only card, with [before] as the progress at
+    /// the start and [after] once answered, and shows the first frames of
+    /// the summary.
+    Future<AppState> finish(
+      WidgetTester tester,
+      FakeGo go, {
+      required Map<String, Object?> before,
+      required Map<String, Object?> after,
+    }) async {
+      FakeStudy(go, [studyCard(1, 'hola', 'hello')]);
+      go.progress = before;
+      final app = await pumpStudy(tester, loadSettings: true);
+      go.progress = after;
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      expect(find.text('Session complete'), findsOneWidget);
+      return app;
+    }
+
+    final reached = (
+      before: progressJson(current: 3, cards: 29, goalKind: 'cards', goal: 30),
+      after: progressJson(current: 3, cards: 30, goalKind: 'cards', goal: 30),
+    );
+
+    testWidgets('the goal reached in the session plays once', (tester) async {
+      // Goal reached (progress spec): a short celebration, once.
+      final app = await finish(
+        tester,
+        withGoal('cards', 30),
+        before: reached.before,
+        after: reached.after,
+      );
+      expect(find.text('Daily goal reached'), findsOneWidget);
+      expect(celebration, findsOneWidget);
+      expect(
+        tester
+            .widget<Icon>(
+              find.descendant(of: celebration, matching: find.byType(Icon)),
+            )
+            .icon,
+        Icons.flag_outlined,
+      );
+      // At most two seconds.
+      await tester.pump(const Duration(seconds: 2));
+      expect(celebration, findsNothing);
+      // Not again when the progress reloads.
+      await app.progress.load();
+      await tester.pumpAndSettle();
+      expect(celebration, findsNothing);
+      expect(find.text('Daily goal reached'), findsOneWidget);
+    });
+
+    testWidgets('a new achievement plays it, and buttons stay usable', (
+      tester,
+    ) async {
+      final go = FakeGo();
+      await finish(
+        tester,
+        go,
+        before: progressJson(current: 12, cards: 5),
+        after: progressJson(
+          current: 12,
+          cards: 6,
+          newAchievements: [newAchievementJson('answers', 1000)],
+        ),
+      );
+      expect(celebration, findsOneWidget);
+      expect(
+        tester
+            .widget<Icon>(
+              find.descendant(of: celebration, matching: find.byType(Icon)),
+            )
+            .icon,
+        Icons.military_tech_outlined,
+      );
+      // The goal suggestion's buttons lie under the celebration.
+      expect(
+        tester
+            .getRect(celebration)
+            .overlaps(tester.getRect(find.text('No thanks'))),
+        isTrue,
+      );
+      await tester.tap(find.text('No thanks'));
+      await tester.pump();
+      expect(go.callsTo('app.GoalSuggestionShown'), hasLength(1));
+      expect(celebration, findsOneWidget);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('reduce motion: the line without an animation', (tester) async {
+      // Reduce motion (progress spec).
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await finish(
+        tester,
+        withGoal('cards', 30),
+        before: reached.before,
+        after: reached.after,
+      );
+      expect(find.text('Daily goal reached'), findsOneWidget);
+      expect(celebration, findsNothing);
+    });
+
+    testWidgets('not when the goal was reached earlier', (tester) async {
+      // Goal already reached earlier (progress spec): the evening session.
+      await finish(
+        tester,
+        withGoal('cards', 30),
+        before: progressJson(
+          current: 3,
+          cards: 31,
+          goalKind: 'cards',
+          goal: 30,
+        ),
+        after: progressJson(current: 3, cards: 32, goalKind: 'cards', goal: 30),
+      );
+      expect(find.text('Daily goal reached'), findsOneWidget);
+      expect(celebration, findsNothing);
+    });
+
+    testWidgets('not while streaks and goals are hidden', (tester) async {
+      final go = withGoal('cards', 30);
+      go.settings = {...go.settings, 'showProgress': false};
+      await finish(tester, go, before: reached.before, after: reached.after);
+      expect(find.text('Daily goal reached'), findsNothing);
+      expect(celebration, findsNothing);
+    });
+
+    testWidgets('not during studying', (tester) async {
+      final go = withGoal('cards', 2);
+      FakeStudy(go, [
+        studyCard(1, 'hola', 'hello'),
+        studyCard(2, 'uno', 'one'),
+      ]);
+      go.progress = progressJson(
+        current: 3,
+        cards: 1,
+        goalKind: 'cards',
+        goal: 2,
+      );
+      await pumpStudy(tester, loadSettings: true);
+      go.progress = progressJson(
+        current: 3,
+        cards: 2,
+        goalKind: 'cards',
+        goal: 2,
+      );
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      expect(find.text('Session complete'), findsNothing);
+      expect(celebration, findsNothing);
+      await tester.pumpAndSettle();
+    });
   });
 }

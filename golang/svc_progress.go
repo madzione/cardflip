@@ -37,6 +37,21 @@ type ProgressService struct {
 	achievements []stats.AchievementStatus
 	rev          uint64
 	today        int
+	// recap is the last weekly recap, for recapKey.
+	recap    *Recap
+	recapKey recapKey
+}
+
+// recapKey is what a weekly recap depends on: the study days read at
+// generation gen with rollover in loc, the week start and the first day of
+// the week.
+type recapKey struct {
+	col          *core.Collection
+	gen          uint64
+	rollover     int
+	loc          *time.Location
+	start        int
+	firstWeekday int
 }
 
 // Progress is the streak and today's progress toward the daily goal.
@@ -117,6 +132,77 @@ func (s *ProgressService) MarkSeen(keys []string) error {
 	}
 	st.SeenAchievements = seen
 	return c.UpdateSettings(st)
+}
+
+// Recap is the weekly recap: the previous week and the week before it.
+type Recap struct {
+	// WeekStart is the first study day (scheduler.DayNumber) of the current
+	// week; AppService.DismissRecap takes it.
+	WeekStart int       `json:"weekStart"`
+	Last      RecapWeek `json:"last"`
+	Before    RecapWeek `json:"before"`
+}
+
+// RecapWeek sums up one week of study.
+type RecapWeek struct {
+	StudyDays int `json:"studyDays"`
+	Answers   int `json:"answers"`
+	// Minutes are the whole minutes spent answering.
+	Minutes int `json:"minutes"`
+	// Retention is the true retention of the week's young and mature
+	// reviews, as in the statistics; nil without such reviews.
+	Retention *float64 `json:"retention"`
+}
+
+// WeeklyRecap returns the previous week's study days, answers, minutes and
+// true retention and those of the week before, or nil when the previous
+// week has no study days. Weeks start on firstWeekday (0 Sunday, 1 Monday,
+// up to 6 Saturday, as in Dart's MaterialLocalizations) and follow the
+// study day boundary. The result is kept until the week or the review log
+// (other than by answering) changes.
+func (s *ProgressService) WeeklyRecap(firstWeekday int) (*Recap, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.refresh(); err != nil {
+		return nil, err
+	}
+	c, err := s.a.collection()
+	if err != nil {
+		return nil, err
+	}
+	weekday := int(time.Unix(int64(s.today)*86400, 0).UTC().Weekday())
+	start := s.today - (weekday-firstWeekday+7)%7
+	key := recapKey{col: s.col, gen: s.gen, rollover: s.rollover, loc: s.loc, start: start, firstWeekday: firstWeekday}
+	if s.col != nil && key == s.recapKey {
+		return s.recap, nil
+	}
+	recap := &Recap{WeekStart: start, Last: s.week(start - 7), Before: s.week(start - 14)}
+	if recap.Last.StudyDays == 0 {
+		recap = nil
+	} else {
+		d, err := stats.LoadDays(c, start-14)
+		if err != nil {
+			return nil, err
+		}
+		recap.Last.Retention = stats.RetentionOfDays(d, start-7, start-1).Total.Retention
+		recap.Before.Retention = stats.RetentionOfDays(d, start-14, start-8).Total.Retention
+	}
+	s.recap, s.recapKey = recap, key
+	return recap, nil
+}
+
+// week sums the study days from first on for 7 days. Callers hold s.mu.
+func (s *ProgressService) week(first int) RecapWeek {
+	var w RecapWeek
+	var ms int64
+	i, _ := slices.BinarySearch(s.days, first)
+	for ; i < len(s.days) && s.days[i] < first+7; i++ {
+		w.StudyDays++
+		w.Answers += s.answers[i]
+		ms += s.ms[i]
+	}
+	w.Minutes = int(ms / time.Minute.Milliseconds())
+	return w
 }
 
 // refresh brings s.result and s.achievements up to date. Callers hold
@@ -207,4 +293,5 @@ func (s *ProgressService) reset() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.col, s.days, s.answers, s.ms, s.mature = nil, nil, nil, nil, nil
+	s.recap, s.recapKey = nil, recapKey{}
 }

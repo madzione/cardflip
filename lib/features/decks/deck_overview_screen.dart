@@ -14,12 +14,13 @@ import 'package:cardflip/widgets/media_cache.dart';
 import 'package:cardflip/widgets/time_format.dart';
 import 'package:cardflip/l10n/l10n.dart';
 
+import 'deck_progress.dart';
 import 'filtered_deck_screen.dart';
 
 /// What choosing a deck on the deck list opens: today's counts, the buried
-/// cards, the deck's description, and Study now, Options and Unbury. It
-/// reloads whenever the deck list does, so it follows every change and the
-/// passing of time.
+/// cards, the deck's progress, its description, and Study now, Options and
+/// Unbury. It reloads whenever the deck list does, so it follows every
+/// change and the passing of time.
 class DeckOverviewScreen extends StatefulWidget {
   const DeckOverviewScreen({super.key, required this.deck});
 
@@ -235,6 +236,8 @@ class _DeckOverviewScreenState extends State<DeckOverviewScreen> {
                   ],
                 ],
               ),
+              const SizedBox(height: 16),
+              DeckProgressCard(progress: _deck.progress),
               if (overview.descriptionHTML.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 const Divider(),

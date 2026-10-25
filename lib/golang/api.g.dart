@@ -76,6 +76,11 @@ class GoApp {
   Future<int> deleteUnusedMedia() async =>
       (await emitter.request<Object?>('app.DeleteUnusedMedia', [])) as int;
 
+  /// DismissRecap hides the weekly recap of the week starting on study day
+  /// weekStart (Recap.WeekStart) on this device.
+  Future<void> dismissRecap(int weekStart) =>
+      emitter.request<Object?>('app.DismissRecap', [weekStart]);
+
   /// EmptyCards lists the cards whose question is empty.
   Future<EmptyCardList> emptyCards() async =>
       EmptyCardList.fromJson(await emitter.request<Object?>('app.EmptyCards', []));
@@ -188,6 +193,11 @@ class GoApp {
   /// with the chosen note type instead of the last used deck.
   Future<void> setDeckByNoteType(bool on_) =>
       emitter.request<Object?>('app.SetDeckByNoteType', [on_]);
+
+  /// SetDeckProgressInList sets whether the deck list shows a thin progress
+  /// bar under each deck. It belongs to the device.
+  Future<void> setDeckProgressInList(bool on_) =>
+      emitter.request<Object?>('app.SetDeckProgressInList', [on_]);
 
   /// SetDefaultSearch sets the search the browser starts with; empty lists all
   /// cards. An invalid term fails with a message naming it.
@@ -1154,6 +1164,15 @@ class GoProgress {
   /// shown yet. The first call reads the whole review log.
   Future<Progress> today() async =>
       Progress.fromJson(await emitter.request<Object?>('progress.Today', []));
+
+  /// WeeklyRecap returns the previous week's study days, answers, minutes and
+  /// true retention and those of the week before, or nil when the previous
+  /// week has no study days. Weeks start on firstWeekday (0 Sunday, 1 Monday,
+  /// up to 6 Saturday, as in Dart's MaterialLocalizations) and follow the
+  /// study day boundary. The result is kept until the week or the review log
+  /// (other than by answering) changes.
+  Future<Recap?> weeklyRecap(int firstWeekday) async =>
+      switch (await emitter.request<Object?>('progress.WeeklyRecap', [firstWeekday])) { final v0? => Recap.fromJson(v0), _ => null };
 }
 
 /// The Go channels mcp.*: a bound Go type (fluffy.Bind) or the exported functions of a package.
@@ -2121,6 +2140,8 @@ class Settings {
     required this.dailyGoal,
     required this.restDaysPerWeek,
     required this.goalSuggestionShown,
+    required this.deckProgressInList,
+    required this.recapDismissedWeek,
   });
 
   factory Settings.fromJson(Object? json) {
@@ -2159,6 +2180,8 @@ class Settings {
       dailyGoal: m['dailyGoal'] as int,
       restDaysPerWeek: m['restDaysPerWeek'] as int,
       goalSuggestionShown: m['goalSuggestionShown'] as bool,
+      deckProgressInList: m['deckProgressInList'] as bool,
+      recapDismissedWeek: m['recapDismissedWeek'] as int,
     );
   }
 
@@ -2286,6 +2309,14 @@ class Settings {
   /// one-time suggestion to set a daily goal.
   final bool goalSuggestionShown;
 
+  /// DeckProgressInList shows a thin progress bar under each deck of the
+  /// deck list ("Show deck progress in the deck list").
+  final bool deckProgressInList;
+
+  /// RecapDismissedWeek is the start of the week whose recap was
+  /// dismissed (Recap.WeekStart), or 0.
+  final int recapDismissedWeek;
+
   Map<String, Object?> toJson() => {
     'theme': theme,
     'language': language,
@@ -2320,10 +2351,12 @@ class Settings {
     'dailyGoal': dailyGoal,
     'restDaysPerWeek': restDaysPerWeek,
     'goalSuggestionShown': goalSuggestionShown,
+    'deckProgressInList': deckProgressInList,
+    'recapDismissedWeek': recapDismissedWeek,
   };
 
   @override
-  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown)';
+  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown, deckProgressInList: $deckProgressInList, recapDismissedWeek: $recapDismissedWeek)';
 }
 
 /// UndoInfo names the steps Undo and Redo act on, e.g. "Delete 3 notes";
@@ -3444,6 +3477,7 @@ class DeckNode {
     required this.collapsed,
     required this.counts,
     required this.cards,
+    required this.progress,
     required this.options,
     required this.filtered,
   });
@@ -3460,6 +3494,7 @@ class DeckNode {
       collapsed: m['collapsed'] as bool,
       counts: Counts.fromJson(m['counts']),
       cards: m['cards'] as int,
+      progress: DeckProgress.fromJson(m['progress']),
       options: DeckOptions.fromJson(m['options']),
       filtered: m['filtered'] as bool,
     );
@@ -3485,6 +3520,9 @@ class DeckNode {
   /// Cards is the number of cards in the deck and its subdecks.
   final int cards;
 
+  /// Progress counts the cards of the deck and its subdecks by state.
+  final DeckProgress progress;
+
   final DeckOptions options;
 
   /// Filtered marks a filtered deck: it has no subdecks or options of its
@@ -3501,12 +3539,53 @@ class DeckNode {
     'collapsed': collapsed,
     'counts': counts.toJson(),
     'cards': cards,
+    'progress': progress.toJson(),
     'options': options.toJson(),
     'filtered': filtered,
   };
 
   @override
-  String toString() => 'DeckNode(id: $id, name: $name, fullName: $fullName, depth: $depth, parentID: $parentID, hasChildren: $hasChildren, collapsed: $collapsed, counts: $counts, cards: $cards, options: $options, filtered: $filtered)';
+  String toString() => 'DeckNode(id: $id, name: $name, fullName: $fullName, depth: $depth, parentID: $parentID, hasChildren: $hasChildren, collapsed: $collapsed, counts: $counts, cards: $cards, progress: $progress, options: $options, filtered: $filtered)';
+}
+
+/// DeckProgress counts a deck's cards by state, leaving out suspended cards.
+/// Learning includes relearning; Mature cards have an interval of 21 days
+/// or more.
+class DeckProgress {
+  const DeckProgress({
+    required this.new_,
+    required this.learning,
+    required this.young,
+    required this.mature,
+  });
+
+  factory DeckProgress.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return DeckProgress(
+      new_: m['new'] as int,
+      learning: m['learning'] as int,
+      young: m['young'] as int,
+      mature: m['mature'] as int,
+    );
+  }
+
+  final int new_;
+
+  final int learning;
+
+  final int young;
+
+  final int mature;
+
+  Map<String, Object?> toJson() => {
+    'new': new_,
+    'learning': learning,
+    'young': young,
+    'mature': mature,
+  };
+
+  @override
+  String toString() => 'DeckProgress(new_: $new_, learning: $learning, young: $young, mature: $mature)';
 }
 
 /// NewNote is a note to add.
@@ -6819,6 +6898,82 @@ class NewAchievement {
 
   @override
   String toString() => 'NewAchievement(id: $id, threshold: $threshold, tierName: $tierName, key: $key)';
+}
+
+/// Recap is the weekly recap: the previous week and the week before it.
+class Recap {
+  const Recap({
+    required this.weekStart,
+    required this.last,
+    required this.before,
+  });
+
+  factory Recap.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return Recap(
+      weekStart: m['weekStart'] as int,
+      last: RecapWeek.fromJson(m['last']),
+      before: RecapWeek.fromJson(m['before']),
+    );
+  }
+
+  /// WeekStart is the first study day (scheduler.DayNumber) of the current
+  /// week; AppService.DismissRecap takes it.
+  final int weekStart;
+
+  final RecapWeek last;
+
+  final RecapWeek before;
+
+  Map<String, Object?> toJson() => {
+    'weekStart': weekStart,
+    'last': last.toJson(),
+    'before': before.toJson(),
+  };
+
+  @override
+  String toString() => 'Recap(weekStart: $weekStart, last: $last, before: $before)';
+}
+
+/// RecapWeek sums up one week of study.
+class RecapWeek {
+  const RecapWeek({
+    required this.studyDays,
+    required this.answers,
+    required this.minutes,
+    this.retention,
+  });
+
+  factory RecapWeek.fromJson(Object? json) {
+    final m = json as Map<String, dynamic>;
+    return RecapWeek(
+      studyDays: m['studyDays'] as int,
+      answers: m['answers'] as int,
+      minutes: m['minutes'] as int,
+      retention: switch (m['retention']) { final v0? => (v0 as num).toDouble(), _ => null },
+    );
+  }
+
+  final int studyDays;
+
+  final int answers;
+
+  /// Minutes are the whole minutes spent answering.
+  final int minutes;
+
+  /// Retention is the true retention of the week's young and mature
+  /// reviews, as in the statistics; nil without such reviews.
+  final double? retention;
+
+  Map<String, Object?> toJson() => {
+    'studyDays': studyDays,
+    'answers': answers,
+    'minutes': minutes,
+    'retention': retention,
+  };
+
+  @override
+  String toString() => 'RecapWeek(studyDays: $studyDays, answers: $answers, minutes: $minutes, retention: $retention)';
 }
 
 /// McpActivity is a change an agent made: the name of its undo step (a

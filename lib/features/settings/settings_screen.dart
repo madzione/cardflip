@@ -406,6 +406,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.showProgress,
               onChanged: settings.setShowProgress,
             ),
+            SwitchListTile(
+              key: const Key('deck-progress-in-list'),
+              title: Text(l.deckProgressInList),
+              subtitle: Text(l.deckProgressInListHelp),
+              value: settings.deckProgressInList,
+              onChanged: settings.setDeckProgressInList,
+            ),
             ListTile(
               key: const Key('daily-goal'),
               title: Text(l.dailyGoal),

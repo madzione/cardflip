@@ -9,7 +9,9 @@ import 'package:cardflip/data/deck_list_model.dart';
 import 'package:cardflip/features/decks/deck_options_screen.dart';
 import 'package:cardflip/features/decks/deck_overview_screen.dart';
 import 'package:cardflip/features/decks/deck_picker.dart';
+import 'package:cardflip/features/decks/deck_progress.dart';
 import 'package:cardflip/features/import/import_screen.dart';
+import 'package:cardflip/features/stats/stats_screen.dart';
 import 'package:cardflip/features/study/study_screen.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/time_format.dart';
@@ -1579,6 +1581,196 @@ void pickerTests() {
       go.emitChange(kind: 'answer');
       await tester.pumpAndSettle();
       expect(headerText(tester), '13 days | 12 / 30 cards');
+    });
+  });
+
+  group('deck progress in the list', () {
+    final bar = find.byKey(const Key('deck-progress-2'));
+
+    Future<void> pumpList(
+      WidgetTester tester, {
+      bool inList = true,
+      bool showProgress = true,
+    }) async {
+      final go = FakeGo()
+        ..tree = [
+          deckNode(1, 'Default'),
+          deckNode(
+            2,
+            'Spanish',
+            cards: 100,
+            progress: {'new': 18, 'learning': 4, 'young': 12, 'mature': 56},
+          ),
+        ];
+      go.settings = {
+        ...go.settings,
+        'deckProgressInList': inList,
+        'showProgress': showProgress,
+      };
+      await pumpApp(tester);
+    }
+
+    testWidgets('bars shown', (tester) async {
+      // Bars shown (app-shell spec): a thin bar under each deck's name.
+      final semantics = tester.ensureSemantics();
+      await pumpList(tester);
+      expect(bar, findsOneWidget);
+      expect(find.byKey(const Key('deck-progress-1')), findsOneWidget);
+      expect(tester.getSize(bar).height, 4);
+      expect(
+        tester.getTopLeft(bar).dy,
+        greaterThan(tester.getBottomLeft(find.text('Spanish')).dy),
+      );
+      expect(find.bySemanticsLabel(RegExp('62% mature')), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets('off by default', (tester) async {
+      // Off by default (app-shell spec).
+      expect(FakeGo().settings['deckProgressInList'], isFalse);
+      await pumpList(tester, inList: false);
+      expect(find.byType(DeckProgressBar), findsNothing);
+    });
+
+    testWidgets('hidden with streaks and goals', (tester) async {
+      await pumpList(tester, showProgress: false);
+      expect(find.text('Spanish'), findsOneWidget);
+      expect(find.byType(DeckProgressBar), findsNothing);
+    });
+
+    testWidgets('narrow rows show the bar below the counts', (tester) async {
+      setSize(tester, const Size(240, 640));
+      await pumpList(tester);
+      expect(
+        tester.getTopLeft(bar).dy,
+        greaterThan(tester.getBottomLeft(find.byKey(const Key('counts-2'))).dy),
+      );
+    });
+  });
+
+  group('weekly recap', () {
+    final recap = find.byKey(const Key('weekly-recap'));
+
+    String metric(WidgetTester tester, String key) => tester
+        .widgetList<Text>(
+          find.descendant(
+            of: find.byKey(Key(key)),
+            matching: find.byType(Text),
+          ),
+        )
+        .map((t) => t.data)
+        .join(' | ');
+
+    Future<FakeGo> pumpRecap(
+      WidgetTester tester, {
+      Map<String, Object?>? json,
+      Map<String, Object?> settings = const {},
+    }) async {
+      final go = FakeGo()
+        ..tree = [deckNode(1, 'Spanish', newCount: 3)]
+        ..recap = json ?? recapJson();
+      go.settings = {...go.settings, ...settings};
+      await pumpApp(tester);
+      return go;
+    }
+
+    testWidgets('new week', (tester) async {
+      // New week (progress spec): 6 days, 420 answers, 95 minutes and 91 %
+      // last week, each with its change from 4 days and 300 answers.
+      final go = await pumpRecap(
+        tester,
+        json: recapJson(last: (6, 420, 95, 0.91), before: (4, 300, 95, 0.88)),
+      );
+      expect(recap, findsOneWidget);
+      expect(find.text('Last week'), findsOneWidget);
+      expect(metric(tester, 'recap-days'), '6 study days | +2');
+      expect(metric(tester, 'recap-answers'), '420 answers | +120');
+      expect(metric(tester, 'recap-minutes'), '95 minutes | same');
+      expect(metric(tester, 'recap-retention'), '91% retention | +3 pts');
+      expect(find.byTooltip('The week before: 4 study days'), findsOneWidget);
+      // At the top, above the streak and the decks.
+      expect(
+        tester.getTopLeft(recap).dy,
+        lessThan(tester.getTopLeft(find.text('Spanish')).dy),
+      );
+      // Weeks start on the first day of the interface language's week:
+      // Sunday in American English.
+      expect(go.callsTo('progress.WeeklyRecap').first, [0]);
+    });
+
+    testWidgets('fewer answers and no retention', (tester) async {
+      await pumpRecap(
+        tester,
+        json: recapJson(last: (2, 40, 9, null), before: (5, 100, 20, 0.9)),
+      );
+      expect(metric(tester, 'recap-days'), '2 study days | \u22123');
+      expect(metric(tester, 'recap-answers'), '40 answers | \u221260');
+      expect(find.byKey(const Key('recap-retention')), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      final go = await pumpRecap(
+        tester,
+        json: recapJson(last: (1, 10, 2, 0.8), before: (0, 0, 0, null)),
+      );
+      expect(go.callsTo('progress.WeeklyRecap'), isNotEmpty);
+      expect(metric(tester, 'recap-retention'), '80% retention');
+    });
+
+    testWidgets('a German interface starts weeks on Monday', (tester) async {
+      final go = await pumpRecap(tester, settings: {'language': 'de'});
+      expect(find.text('Letzte Woche'), findsOneWidget);
+      expect(go.callsTo('progress.WeeklyRecap').last, [1]);
+    });
+
+    testWidgets('tapping opens the statistics', (tester) async {
+      // Open statistics (progress spec).
+      await pumpRecap(tester);
+      await tester.tap(find.text('Last week'));
+      await tester.pumpAndSettle();
+      expect(find.byType(StatsScreen), findsOneWidget);
+    });
+
+    testWidgets('dismissed until next week', (tester) async {
+      // Dismissed (progress spec): hidden on this device, also after a
+      // restart, until the next week.
+      final go = await pumpRecap(tester, json: recapJson(weekStart: 20750));
+      await tester.tap(find.byKey(const Key('recap-dismiss')));
+      await tester.pumpAndSettle();
+      expect(recap, findsNothing);
+      expect(go.callsTo('app.DismissRecap'), [
+        [20750],
+      ]);
+      expect(find.byType(StatsScreen), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      final restarted = await pumpRecap(
+        tester,
+        json: recapJson(weekStart: 20750),
+        settings: {'recapDismissedWeek': 20750},
+      );
+      expect(recap, findsNothing);
+
+      // The next week's recap shows.
+      restarted.recap = recapJson(weekStart: 20757);
+      restarted.emitChange();
+      await tester.pumpAndSettle();
+      expect(recap, findsOneWidget);
+    });
+
+    testWidgets('nothing studied last week', (tester) async {
+      // Nothing studied last week (progress spec): Go has no recap.
+      final go = FakeGo()..tree = [deckNode(1, 'Spanish')];
+      await pumpApp(tester);
+      expect(go.callsTo('progress.WeeklyRecap'), isNotEmpty);
+      expect(recap, findsNothing);
+      expect(find.text('Spanish'), findsOneWidget);
+    });
+
+    testWidgets('hidden with streaks and goals', (tester) async {
+      // Dismiss the recap (progress spec): none while Show streaks and
+      // goals is off, and Go is not asked.
+      final go = await pumpRecap(tester, settings: {'showProgress': false});
+      expect(recap, findsNothing);
+      expect(go.callsTo('progress.WeeklyRecap'), isEmpty);
     });
   });
 }

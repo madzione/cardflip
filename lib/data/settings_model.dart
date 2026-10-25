@@ -55,6 +55,14 @@ class SettingsModel extends ChangeNotifier {
   /// daily goal.
   bool goalSuggestionShown = false;
 
+  /// "Show deck progress in the deck list": a thin bar under each deck
+  /// while streaks and goals are shown; it belongs to the device.
+  bool deckProgressInList = false;
+
+  /// The start of the week whose recap was dismissed on this device
+  /// (`golang.Recap.weekStart`), or 0.
+  int recapDismissedWeek = 0;
+
   /// Whether a waiting study session shows learning cards as soon as they
   /// are due, instead of asking first.
   bool autoContinueLearning = false;
@@ -160,6 +168,8 @@ class SettingsModel extends ChangeNotifier {
       dailyGoal = s.dailyGoal;
       restDaysPerWeek = s.restDaysPerWeek;
       goalSuggestionShown = s.goalSuggestionShown;
+      deckProgressInList = s.deckProgressInList;
+      recapDismissedWeek = s.recapDismissedWeek;
       autoContinueLearning = s.autoContinueLearning;
       learnAheadMinutes = s.learnAheadMinutes;
       timeboxMinutes = s.timeboxMinutes;
@@ -272,6 +282,27 @@ class SettingsModel extends ChangeNotifier {
     goalSuggestionShown = true;
     notifyListeners();
     await guard(golang.app.goalSuggestionShown);
+  }
+
+  Future<void> setDeckProgressInList(bool on) async {
+    deckProgressInList = on;
+    notifyListeners();
+    if (!await guard(() => golang.app.setDeckProgressInList(on))) {
+      deckProgressInList = !on;
+      notifyListeners();
+    }
+  }
+
+  /// Hides the recap of the week starting on [weekStart] until the next
+  /// week.
+  Future<void> dismissRecap(int weekStart) async {
+    final previous = recapDismissedWeek;
+    recapDismissedWeek = weekStart;
+    notifyListeners();
+    if (!await guard(() => golang.app.dismissRecap(weekStart))) {
+      recapDismissedWeek = previous;
+      notifyListeners();
+    }
   }
 
   Future<bool> setRolloverHour(int hour) async {

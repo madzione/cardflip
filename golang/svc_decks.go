@@ -114,6 +114,26 @@ func countsOf(c core.Counts) Counts {
 	return Counts{New: c.New, Learning: c.Learning, Review: c.Review}
 }
 
+// DeckProgress counts a deck's cards by state, leaving out suspended cards.
+// Learning includes relearning; Mature cards have an interval of 21 days
+// or more.
+type DeckProgress struct {
+	New      int `json:"new"`
+	Learning int `json:"learning"`
+	Young    int `json:"young"`
+	Mature   int `json:"mature"`
+}
+
+// MaturePercent is the share of mature cards, rounded down to a whole
+// percent; 0 for no cards.
+func (p DeckProgress) MaturePercent() int {
+	total := p.New + p.Learning + p.Young + p.Mature
+	if total == 0 {
+		return 0
+	}
+	return p.Mature * 100 / total
+}
+
 // DeckNode is one row of the deck tree.
 type DeckNode struct {
 	ID int64 `json:"id"`
@@ -126,8 +146,10 @@ type DeckNode struct {
 	Collapsed   bool   `json:"collapsed"`
 	Counts      Counts `json:"counts"`
 	// Cards is the number of cards in the deck and its subdecks.
-	Cards   int         `json:"cards"`
-	Options DeckOptions `json:"options"`
+	Cards int `json:"cards"`
+	// Progress counts the cards of the deck and its subdecks by state.
+	Progress DeckProgress `json:"progress"`
+	Options  DeckOptions  `json:"options"`
 	// Filtered marks a filtered deck: it has no subdecks or options of its
 	// own and cannot get new notes.
 	Filtered bool `json:"filtered"`
@@ -142,7 +164,7 @@ func (s *DecksService) Tree() ([]DeckNode, error) {
 	}
 	decks := c.Decks()
 	counts := c.DeckCounts()
-	own := c.CardsPerDeck()
+	own := c.CardStatesPerDeck()
 	byName := map[string]int64{}
 	for _, d := range decks {
 		byName[strings.ToLower(d.Name)] = int64(d.ID)
@@ -172,8 +194,14 @@ func (s *DecksService) Tree() ([]DeckNode, error) {
 	// Card totals include subdecks: add each deck's own cards to it and all
 	// its ancestors.
 	for _, d := range decks {
+		s := own[d.ID]
 		for id := int64(d.ID); id != 0; id = out[index[id]].ParentID {
-			out[index[id]].Cards += own[d.ID]
+			n := &out[index[id]]
+			n.Cards += s.Total()
+			n.Progress.New += s.New
+			n.Progress.Learning += s.Learning
+			n.Progress.Young += s.Young
+			n.Progress.Mature += s.Mature
 		}
 	}
 	return out, nil

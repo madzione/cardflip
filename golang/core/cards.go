@@ -290,13 +290,53 @@ func (c *Collection) ResetCards(ids []ID, opts ResetOptions) error {
 	return c.commit(o, rev...)
 }
 
-// CardsPerDeck counts the cards directly in each deck.
-func (c *Collection) CardsPerDeck() map[ID]int {
+// CardStates counts a deck's cards by state. Learning includes
+// relearning; Young and Mature are review cards with an interval under and
+// of MatureInterval days or more. Burying is ignored: a buried card counts
+// by its state.
+type CardStates struct {
+	New, Learning, Young, Mature, Suspended int
+}
+
+// Total is the number of cards, suspended ones included.
+func (s CardStates) Total() int { return s.New + s.Learning + s.Young + s.Mature + s.Suspended }
+
+// Add adds o's counts to s.
+func (s *CardStates) Add(o CardStates) {
+	s.New += o.New
+	s.Learning += o.Learning
+	s.Young += o.Young
+	s.Mature += o.Mature
+	s.Suspended += o.Suspended
+}
+
+// CardStatesPerDeck counts the cards directly in each deck by state.
+func (c *Collection) CardStatesPerDeck() map[ID]CardStates {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	out := map[ID]int{}
+	counts := map[ID]*CardStates{}
 	for _, card := range c.cards {
-		out[card.DeckID]++
+		s := counts[card.DeckID]
+		if s == nil {
+			s = &CardStates{}
+			counts[card.DeckID] = s
+		}
+		switch {
+		case card.Suspended:
+			s.Suspended++
+		case card.State == scheduler.New:
+			s.New++
+		case card.State == scheduler.Learning, card.State == scheduler.Relearning:
+			s.Learning++
+		case card.ScheduledDays >= MatureInterval:
+			s.Mature++
+		default:
+			s.Young++
+		}
+	}
+	out := make(map[ID]CardStates, len(counts))
+	for id, s := range counts {
+		out[id] = *s
 	}
 	return out
 }

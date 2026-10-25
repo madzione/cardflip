@@ -135,6 +135,12 @@ type Settings struct {
 	// GoalSuggestionShown records that the user opened or dismissed the
 	// one-time suggestion to set a daily goal.
 	GoalSuggestionShown bool `json:"goalSuggestionShown"`
+	// DeckProgressInList shows a thin progress bar under each deck of the
+	// deck list ("Show deck progress in the deck list").
+	DeckProgressInList bool `json:"deckProgressInList"`
+	// RecapDismissedWeek is the start of the week whose recap was
+	// dismissed (Recap.WeekStart), or 0.
+	RecapDismissedWeek int `json:"recapDismissedWeek"`
 }
 
 // Settings returns the app settings.
@@ -156,7 +162,8 @@ func (s *AppService) Settings() (Settings, error) {
 		UIScale: cmp.Or(st.UIScale, core.DefaultUIScale), Minimalist: st.Minimalist,
 		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem), ShowProgress: !st.HideProgress,
 		DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal, RestDaysPerWeek: st.RestDaysPerWeek,
-		GoalSuggestionShown: st.GoalSuggestionShown}, nil
+		GoalSuggestionShown: st.GoalSuggestionShown, DeckProgressInList: st.DeckProgressInList,
+		RecapDismissedWeek: st.RecapDismissedWeek}, nil
 }
 
 func browserColumns(st core.Settings) []string {
@@ -289,6 +296,18 @@ func (s *AppService) SetRestDaysPerWeek(n int) error {
 // one-time suggestion to set a daily goal.
 func (s *AppService) GoalSuggestionShown() error {
 	return s.updateSettings(func(st *core.Settings) { st.GoalSuggestionShown = true })
+}
+
+// SetDeckProgressInList sets whether the deck list shows a thin progress
+// bar under each deck. It belongs to the device.
+func (s *AppService) SetDeckProgressInList(on bool) error {
+	return s.updateSettings(func(st *core.Settings) { st.DeckProgressInList = on })
+}
+
+// DismissRecap hides the weekly recap of the week starting on study day
+// weekStart (Recap.WeekStart) on this device.
+func (s *AppService) DismissRecap(weekStart int) error {
+	return s.updateSettings(func(st *core.Settings) { st.RecapDismissedWeek = weekStart })
 }
 
 // SetShowPlayButtons sets whether cards with audio show replay buttons.

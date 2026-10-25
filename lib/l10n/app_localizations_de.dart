@@ -4033,6 +4033,104 @@ class AppLocalizationsDe extends AppLocalizations {
       'In der Stapelliste und nach dem Lernen. Nur auf diesem Gerät.';
 
   @override
+  String get deckProgressInList =>
+      'Stapelfortschritt in der Stapelliste anzeigen';
+
+  @override
+  String get deckProgressInListHelp =>
+      'Ein schmaler Balken aus neuen, lernenden, jungen und ausgereiften Karten unter jedem Stapel. Nur auf diesem Gerät.';
+
+  @override
+  String get deckProgress => 'Fortschritt';
+
+  @override
+  String deckProgressMature(String percent) {
+    return '$percent ausgereift';
+  }
+
+  @override
+  String deckProgressLegend(String state, int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    return '$state: $countString';
+  }
+
+  @override
+  String get recapTitle => 'Letzte Woche';
+
+  @override
+  String get recapTooltip =>
+      'Letzte Woche im Vergleich zur Woche davor. Öffnet die Statistik.';
+
+  @override
+  String get recapDismiss => 'Bis nächste Woche ausblenden';
+
+  @override
+  String recapStudyDays(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Lerntage',
+      one: '1 Lerntag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapAnswers(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Antworten',
+      one: '1 Antwort',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapMinutes(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Minuten',
+      one: '1 Minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recapRetention(String percent) {
+    return '$percent Behaltensrate';
+  }
+
+  @override
+  String recapWeekBefore(String value) {
+    return 'Woche davor: $value';
+  }
+
+  @override
+  String recapPoints(String change) {
+    return '$change Pkt.';
+  }
+
+  @override
+  String get recapSame => 'gleich';
+
+  @override
   String get dailyGoal => 'Tagesziel';
 
   @override

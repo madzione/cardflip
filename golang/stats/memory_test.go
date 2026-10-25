@@ -135,3 +135,30 @@ func TestTrueRetention(t *testing.T) {
 		t.Fatalf("all = %+v", r)
 	}
 }
+
+func TestRetentionOfDays(t *testing.T) {
+	// A 7-day range, 7 to 13 days ago: the answers on its first and last
+	// day count, those just outside it and learning answers do not.
+	d := testData()
+	d.answer(8, 13, Mature, scheduler.Good, 30, 0)
+	d.answer(2, 7, Young, scheduler.Again, 5, 0)
+	d.answer(1, 10, Young, scheduler.Good, 5, 0)
+	d.answer(3, 10, Learning, scheduler.Again, 0, 0)
+	d.answer(5, 14, Mature, scheduler.Again, 30, 0)
+	d.answer(5, 6, Mature, scheduler.Again, 30, 0)
+	got := RetentionOfDays(d, d.Today-13, d.Today-7)
+	if got.Mature.Passed != 8 || got.Mature.Failed != 0 || got.Young.Passed != 1 || got.Young.Failed != 2 {
+		t.Fatalf("week = %+v", got)
+	}
+	if tot := got.Total; tot.Passed != 9 || tot.Failed != 2 || *tot.Retention != 9.0/11 {
+		t.Fatalf("week total = %+v", tot)
+	}
+	// The same range as the table's last 7 days gives the same numbers.
+	if week, table := RetentionOfDays(d, d.Today-6, d.Today), TrueRetention(d).Rows[2]; week.Total.Failed != table.Total.Failed ||
+		week.Total.Passed != table.Total.Passed {
+		t.Fatalf("last 7 days = %+v, table %+v", week, table)
+	}
+	if empty := RetentionOfDays(d, d.Today-30, d.Today-20); empty.Total.Retention != nil {
+		t.Fatalf("no reviews = %+v", empty)
+	}
+}

@@ -289,13 +289,40 @@ type entry struct {
 	Preview bool `json:"preview"`
 }
 
-// readReviews decodes every answer in c's review log, months in parallel
-// where Go has threads.
+// LoadDays returns Data of the whole collection with only the answers
+// from study day first on, and no cards. It reads only the review log
+// months that can hold those answers.
+func LoadDays(c *core.Collection, first int) (*Data, error) {
+	now := c.Now()
+	rollover := c.Settings().RolloverHour
+	months, err := c.RevlogMonths()
+	if err != nil {
+		return nil, err
+	}
+	// Months are named by the local date of their answers; two days of
+	// margin cover any time zone and the rollover hour.
+	from := time.Unix(int64(first-2)*86400, 0).UTC().Format("2006-01")
+	months = slices.DeleteFunc(months, func(m string) bool { return m < from })
+	all, err := readMonths(c, months, now.Location(), rollover)
+	if err != nil {
+		return nil, err
+	}
+	all = slices.DeleteFunc(all, func(r Review) bool { return r.Day < first })
+	return &Data{Now: now, Today: scheduler.DayNumber(now, rollover), Rollover: rollover, Reviews: all}, nil
+}
+
+// readReviews decodes every answer in c's review log.
 func readReviews(c *core.Collection, loc *time.Location, rollover int) ([]Review, error) {
 	months, err := c.RevlogMonths()
 	if err != nil {
 		return nil, err
 	}
+	return readMonths(c, months, loc, rollover)
+}
+
+// readMonths decodes every answer in the review log months, in parallel
+// where Go has threads.
+func readMonths(c *core.Collection, months []string, loc *time.Location, rollover int) ([]Review, error) {
 	parts := make([][]Review, len(months))
 	errs := make([]error, len(months))
 	sem := make(chan struct{}, max(runtime.GOMAXPROCS(0), 1))

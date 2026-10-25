@@ -413,7 +413,7 @@ var undoMutations = map[string]func(t *testing.T, f *undoFixture) error{
 // Exported methods of Collection that are not undo steps.
 var notUndoSteps = []string{
 	// Reads.
-	"AllCards", "AllNoteIDs", "AllTags", "BasicNoteType", "Card", "CardCount", "CardHistory", "CheckSearch", "CheckTemplate", "CardsOfNote", "CardsOfNotes", "CardsPerDeck", "Deck", "DeckCounts", "DeckDeletionInfo", "DeckLabel", "DeckOptions", "Decks", "DeletionLog", "Duplicates",
+	"AllCards", "AllNoteIDs", "AllTags", "BasicNoteType", "Card", "CardCount", "CardHistory", "CheckSearch", "CheckTemplate", "CardsOfNote", "CardsOfNotes", "CardStatesPerDeck", "Deck", "DeckCounts", "DeckDeletionInfo", "DeckLabel", "DeckOptions", "Decks", "DeletionLog", "Duplicates",
 	"EffectiveLimits", "Export", "ExportReviews", "ExtraCards", "PresetUsage", "Presets",
 	"Optimize", "OptimizeSearch", "RescheduleCount", "RescheduleCountAll", "Simulate", "SuggestRetention",
 	"EachMedia", "EmptyCards", "FindDuplicates", "FindReplacePreview", "ChangeNoteTypePreview", "HasMedia", "IsEmptyCard", "Media", "NextCountChange", "NextDue", "IsMarked", "Note",

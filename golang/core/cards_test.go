@@ -142,6 +142,46 @@ func TestSuspendAndBury(t *testing.T) {
 	reopen(t, c, store, clk)
 }
 
+func TestCardStatesPerDeck(t *testing.T) {
+	c, _, clk := testCollection(t)
+	deck, _ := c.CreateDeck("Spanish")
+	other, _ := c.CreateDeck("Other")
+	states := []scheduler.CardState{
+		{State: scheduler.New},
+		{State: scheduler.Learning},
+		{State: scheduler.Relearning, ScheduledDays: 30},
+		{State: scheduler.Review, ScheduledDays: 20},
+		{State: scheduler.Review, ScheduledDays: 21},
+		{State: scheduler.Review, ScheduledDays: 40}, // buried below
+		{State: scheduler.Review, ScheduledDays: 40}, // suspended below
+	}
+	var cards []*Card
+	for _, st := range states {
+		card := c.CardsOfNote(addNoteIn(t, c, deck, "Basic", "q", "a"))[0]
+		card.CardState = st
+		cards = append(cards, &card)
+	}
+	cards[5].BuriedUntil = clk.t.Add(time.Hour)
+	cards[6].Suspended = true
+	c.mu.Lock()
+	c.commit(&op{Kind: "test", Cards: cards})
+	c.mu.Unlock()
+	addNoteIn(t, c, other, "Basic", "q", "a")
+
+	got := c.CardStatesPerDeck()
+	// A buried mature card still counts as mature; a suspended one counts
+	// as suspended whatever its state.
+	if want := (CardStates{New: 1, Learning: 2, Young: 1, Mature: 2, Suspended: 1}); got[deck] != want {
+		t.Fatalf("Spanish = %+v, want %+v", got[deck], want)
+	}
+	if got[deck].Total() != 7 {
+		t.Fatalf("total = %d", got[deck].Total())
+	}
+	if want := (CardStates{New: 1}); got[other] != want {
+		t.Fatalf("Other = %+v", got[other])
+	}
+}
+
 func TestResetCards(t *testing.T) {
 	c, store, clk := testCollection(t)
 	a := c.CardsOfNote(addNote(t, c, "Basic", "a", "1"))[0]

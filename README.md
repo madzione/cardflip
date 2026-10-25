@@ -15,12 +15,16 @@ Linux, Windows, macOS, Android, iOS and the web.
   spaced-repetition algorithm.
 - **Keeps you going.** A quiet streak counts the days in a row you studied,
   allowing up to two rest days a week if you like, and an optional daily
-  goal of cards or minutes shows how far you are today. Achievements mark
-  milestones in bronze, silver, gold and platinum: answers, your longest
-  streak, study days, days you met your goal, cards in long-term memory, and
-  coming back after a break. All of it comes from your review history, so
-  imports and other devices count too, with their real dates, and you can
-  turn it off.
+  goal of cards or minutes shows how far you are today, with a short
+  celebration when you reach it. Achievements mark milestones in bronze,
+  silver, gold and platinum: answers, your longest streak, study days, days
+  you met your goal, cards in long-term memory, and coming back after a
+  break. At the start of each week, a recap compares last week's study
+  days, answers, study time and retention with the week before. All of it
+  comes from your review history, so imports and other devices count too,
+  with their real dates, and you can turn it off. Each deck also shows how
+  far along it is: a bar of its new, learning, young and mature cards and
+  the share already mature, optionally right in the deck list.
 - **Brings your cards along.** Import CSV/TSV text files, Anki decks
   (`.apkg`) and Anki collections (`.colpkg`), including their templates,
   styling, images, audio and video.

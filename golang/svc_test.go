@@ -696,6 +696,16 @@ func TestGoalSettings(t *testing.T) {
 	}
 	check(t, s.app.SetShowProgress(false))
 	check(t, s.app.GoalSuggestionShown())
+	// Deck progress in the deck list is off by default (spec), and no recap
+	// has been dismissed.
+	if st := must(s.app.Settings()); st.DeckProgressInList || st.RecapDismissedWeek != 0 {
+		t.Fatalf("default deck list settings = %+v", st)
+	}
+	check(t, s.app.SetDeckProgressInList(true))
+	check(t, s.app.DismissRecap(20750))
+	if st := must(s.app.Settings()); !st.DeckProgressInList || st.RecapDismissedWeek != 20750 {
+		t.Fatalf("deck list settings = %+v", st)
+	}
 	// Persisted in backups (spec): a goal of 30 cards and 2 rest days per
 	// week survive a restore on another installation.
 	check(t, s.app.SetDailyGoal("cards", 30))
@@ -966,6 +976,66 @@ func TestDecksNextChange(t *testing.T) {
 	due := must(s.browse.Card(id)).Due
 	if next := must(s.decks.NextChange()); due == nil || !next.Equal(*due) {
 		t.Fatalf("next change = %v, want card due %v", next, due)
+	}
+}
+
+// importCards imports n Basic notes into deck, each with one card in state.
+func importCards(t *testing.T, s *services, deck string, n int, state scheduler.CardState, suspended bool) {
+	t.Helper()
+	c := must(s.app.a.collection())
+	var basic core.ID
+	for _, nt := range c.NoteTypes() {
+		if nt.Name == "Basic" {
+			basic = nt.ID
+		}
+	}
+	b := &core.ImportBatch{NoteTypes: []core.ImportNoteType{{Key: "basic", ExistingID: basic}}}
+	for i := range n {
+		guid := fmt.Sprintf("%s-%v-%d-%t-%d", deck, state.State, state.ScheduledDays, suspended, i)
+		b.Notes = append(b.Notes, core.ImportNote{TypeKey: "basic", GUID: guid, DeckName: deck, Fields: []string{guid, "a"},
+			Cards: []core.ImportCard{{DeckName: deck, State: state, Suspended: suspended}}})
+	}
+	if _, err := c.Import(b, nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestDeckProgress(t *testing.T) {
+	s, _ := opened(t)
+	due := s.clock.AddDate(0, 0, 1)
+	young := scheduler.CardState{State: scheduler.Review, Due: due, ScheduledDays: 5}
+	mature := scheduler.CardState{State: scheduler.Review, Due: due, ScheduledDays: 30}
+	// Deck progress (spec): Spanish has 100 cards, 10 of them suspended,
+	// and of the other 90 there are 18 new, 4 learning, 12 young and 56
+	// mature, split over Spanish and its subdeck Verbs.
+	importCards(t, s, "Spanish", 10, mature, true)
+	importCards(t, s, "Spanish", 18, scheduler.CardState{State: scheduler.New}, false)
+	importCards(t, s, "Spanish", 2, scheduler.CardState{State: scheduler.Learning, Due: *s.clock}, false)
+	importCards(t, s, "Spanish::Verbs", 2, scheduler.CardState{State: scheduler.Relearning, Due: *s.clock, ScheduledDays: 30}, false)
+	importCards(t, s, "Spanish::Verbs", 12, young, false)
+	importCards(t, s, "Spanish", 40, mature, false)
+	importCards(t, s, "Spanish::Verbs", 16, mature, false)
+	// Buried cards count by state (spec).
+	verbs := must(s.browse.Search(`deck:"Spanish::Verbs" prop:ivl>=21`, "created", false))
+	check(t, must(s.app.a.collection()).BuryCards([]core.ID{core.ID(verbs[0])}))
+
+	byName := map[string]DeckNode{}
+	for _, n := range must(s.decks.Tree()) {
+		byName[n.FullName] = n
+	}
+	spanish := byName["Spanish"]
+	if want := (DeckProgress{New: 18, Learning: 4, Young: 12, Mature: 56}); spanish.Progress != want || spanish.Cards != 100 {
+		t.Fatalf("Spanish = %+v (%d cards), want %+v", spanish.Progress, spanish.Cards, want)
+	}
+	if p := spanish.Progress.MaturePercent(); p != 62 {
+		t.Fatalf("mature = %d %%, want 62", p)
+	}
+	if want := (DeckProgress{Learning: 2, Young: 12, Mature: 16}); byName["Spanish::Verbs"].Progress != want {
+		t.Fatalf("Verbs = %+v", byName["Spanish::Verbs"].Progress)
+	}
+	// An empty deck has no progress.
+	if d := byName["Default"]; d.Progress != (DeckProgress{}) || d.Progress.MaturePercent() != 0 {
+		t.Fatalf("Default = %+v", d.Progress)
 	}
 }
 
@@ -3746,8 +3816,8 @@ func corruptStored(t *testing.T, store *storage.MemoryStore, op string) {
 func cardCount(t *testing.T, s *services) int {
 	t.Helper()
 	n := 0
-	for _, count := range must(s.app.a.collection()).CardsPerDeck() {
-		n += count
+	for _, states := range must(s.app.a.collection()).CardStatesPerDeck() {
+		n += states.Total()
 	}
 	return n
 }

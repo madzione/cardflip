@@ -19,6 +19,7 @@ import 'package:cardflip/features/decks/filtered_deck_screen.dart';
 import 'package:cardflip/features/editor/math_insert.dart' show MenuEntryLabel;
 import 'package:cardflip/features/editor/note_editor_screen.dart';
 import 'package:cardflip/features/progress/achievements.dart';
+import 'package:cardflip/features/progress/celebration.dart';
 import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/card_view.dart';
@@ -251,17 +252,23 @@ class _StudyScreenState extends State<StudyScreen> {
   /// summary can say the streak was extended; null until known.
   bool? _studiedBefore;
 
+  /// Whether the daily goal was already reached when the session started,
+  /// so the summary celebrates only reaching it in this session; null
+  /// until known.
+  bool? _goalReachedBefore;
+
   @override
   void initState() {
     super.initState();
     final progress = AppScope.read(context).progress.progress;
     if (progress != null) {
       _studiedBefore = progress.todayStudied;
+      _goalReachedBefore = progress.goalReached;
     } else if (AppScope.read(context).settings.showProgress) {
-      golang.progress.today().then<void>(
-        (p) => _studiedBefore ??= p.todayStudied,
-        onError: (Object _) {},
-      );
+      golang.progress.today().then<void>((p) {
+        _studiedBefore ??= p.todayStudied;
+        _goalReachedBefore ??= p.goalReached;
+      }, onError: (Object _) {});
     }
     _openSessions = AppScope.read(context).openSessions;
     _openSessions.value++;
@@ -1434,6 +1441,7 @@ class _StudyScreenState extends State<StudyScreen> {
           : _Summary(
               state: state,
               studiedBefore: _studiedBefore,
+              goalReachedBefore: _goalReachedBefore,
               onCheck: () => _run(golang.study.current),
               onContinue: onContinue,
             );
@@ -2027,14 +2035,17 @@ class _Summary extends StatelessWidget {
   const _Summary({
     required this.state,
     required this.studiedBefore,
+    required this.goalReachedBefore,
     required this.onCheck,
     this.onContinue,
   });
 
   final golang.StudyState state;
 
-  /// See [_ProgressLines.studiedBefore].
+  /// See [_ProgressLines.studiedBefore] and
+  /// [_ProgressLines.goalReachedBefore].
   final bool? studiedBefore;
+  final bool? goalReachedBefore;
   final VoidCallback onCheck;
 
   /// Set when a learning card became due while waiting.
@@ -2060,6 +2071,7 @@ class _Summary extends StatelessWidget {
       ],
       extra: _ProgressLines(
         studiedBefore: studiedBefore,
+        goalReachedBefore: goalReachedBefore,
         newAchievements: true,
       ),
       action: Wrap(
@@ -2080,17 +2092,25 @@ class _Summary extends StatelessWidget {
 /// The streak and goal lines of the summary and nothing-due screens
 /// (progress spec, "Summary progress lines"), the summary's line of new
 /// achievements (study-session spec, "New achievements on the summary"),
-/// and the one-time suggestion to set a daily goal. Nothing is shown while
-/// streaks and goals are off.
+/// and the one-time suggestion to set a daily goal. On the summary, it
+/// celebrates the daily goal reached or achievements earned in the session
+/// (progress spec, "Celebrations"). Nothing is shown while streaks and
+/// goals are off.
 class _ProgressLines extends StatefulWidget {
   const _ProgressLines({
     required this.studiedBefore,
+    this.goalReachedBefore,
     this.newAchievements = false,
   });
 
   /// Whether today was a study day when the session started: if not and it
   /// is now, the session extended the streak.
   final bool? studiedBefore;
+
+  /// Whether the daily goal was reached when the session started: if not
+  /// and it is now, the session reached it. Null when unknown, or on the
+  /// nothing-due screen, which celebrates nothing.
+  final bool? goalReachedBefore;
 
   /// Whether to name the achievement tiers not shown yet, and mark them
   /// shown so the deck list does not tell again.
@@ -2103,6 +2123,12 @@ class _ProgressLines extends StatefulWidget {
 class _ProgressLinesState extends State<_ProgressLines> {
   /// The new achievement tiers named here, kept once marked shown.
   final _new = <golang.NewAchievement>[];
+
+  /// What the celebration shows while it plays. It is decided once
+  /// ([_celebrated]), the first time there is something to celebrate, so
+  /// it plays at most once, and never under reduce motion.
+  IconData? _celebration;
+  bool _celebrated = false;
 
   @override
   void initState() {
@@ -2147,9 +2173,21 @@ class _ProgressLinesState extends State<_ProgressLines> {
           },
           if (widget.newAchievements) ?_newLine(app.progress, l),
         ];
+        if (widget.newAchievements && !_celebrated) {
+          final icon = widget.goalReachedBefore == false && p.goalReached
+              ? Icons.flag_outlined
+              : _new.isNotEmpty
+              ? Icons.military_tech_outlined
+              : null;
+          if (icon != null) {
+            _celebrated = true;
+            if (!reduceMotion(context)) _celebration = icon;
+          }
+        }
+        final celebration = _celebration;
         final suggest =
             settings.dailyGoalKind.isEmpty && !settings.goalSuggestionShown;
-        return Column(
+        final column = Column(
           key: const Key('progress-lines'),
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2182,6 +2220,22 @@ class _ProgressLinesState extends State<_ProgressLines> {
                 ],
               ),
             ],
+          ],
+        );
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            column,
+            if (celebration != null)
+              Positioned.fill(
+                child: Celebration(
+                  key: const Key('celebration'),
+                  icon: celebration,
+                  onEnd: () {
+                    if (mounted) setState(() => _celebration = null);
+                  },
+                ),
+              ),
           ],
         );
       },

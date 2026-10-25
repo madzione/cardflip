@@ -697,6 +697,13 @@ type Settings struct {
 	// were first evaluated, when everything earned until then is marked
 	// seen; it is saved even when empty to tell the two apart.
 	SeenAchievements []string `json:"seenAchievements"`
+	// DeckProgressInList shows a thin progress bar under each deck of the
+	// deck list.
+	DeckProgressInList bool `json:"deckProgressInList,omitempty"`
+	// RecapDismissedWeek is the first study day number (see
+	// scheduler.DayNumber) of the week whose recap was dismissed; 0 for
+	// none.
+	RecapDismissedWeek int `json:"recapDismissedWeek,omitempty"`
 }
 
 // UI size limits and default, in percent. The size changes in steps of
