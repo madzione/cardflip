@@ -9,11 +9,19 @@ import 'package:cardflip/widgets/time_format.dart';
 /// badge's disc, the disc's colours (top and bottom of its gradient) and
 /// its name. A new achievement in Go needs an entry here.
 class AchievementLook {
-  const AchievementLook(this.icon, this.discTop, this.discBottom);
+  const AchievementLook(
+    this.icon,
+    this.discTop,
+    this.discBottom, {
+    this.oneTier = false,
+  });
 
   final IconData icon;
   final Color discTop;
   final Color discBottom;
+
+  /// Whether the achievement has a single tier, whose badge has no stars.
+  final bool oneTier;
 
   /// The look of achievement [id]; an unknown one gets a neutral star.
   static AchievementLook of(String id) => _looks[id] ?? _unknown;
@@ -65,6 +73,7 @@ class AchievementLook {
       Icons.restore,
       Color(0xFF9470DA),
       Color(0xFF6A3FB5),
+      oneTier: true,
     ),
   };
 }
@@ -119,6 +128,12 @@ String newTierLabel(AppLocalizations l, String id, int threshold) =>
       'comeback' => l.achievementComeback,
       _ => '${achievementName(l, id)} $threshold',
     };
+
+/// The stars on the badge of new tier [a], as on the achievements screen:
+/// the tier's number, none for an achievement of one tier.
+int newTierStars(golang.NewAchievement a) => AchievementLook.of(a.id).oneTier
+    ? 0
+    : const ['bronze', 'silver', 'gold', 'platinum'].indexOf(a.tierName) + 1;
 
 /// The tiers named in a notice: "1,000 answers, 100 study days".
 String newTierLabels(AppLocalizations l, List<golang.NewAchievement> tiers) =>

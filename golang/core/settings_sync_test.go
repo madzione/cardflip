@@ -35,6 +35,7 @@ func TestWithSyncedSettings(t *testing.T) {
 	src.RolloverHour, src.LearnAheadMinutes, src.FlagNames[2], src.RestDaysPerWeek = 6, &ahead, "Check", 1
 	src.Theme, src.Language, src.UIScale, src.LastDeckID = ThemeDark, "de", 150, 7
 	src.SeenAchievements, src.SeenAchievementIDs = []string{"level:5"}, []string{"level"}
+	src.HideStudyRewards = true
 	dst := DefaultSettings()
 	dst.Theme, dst.Language = ThemeLight, "en"
 	got := withSyncedSettings(dst, src)
@@ -43,7 +44,7 @@ func TestWithSyncedSettings(t *testing.T) {
 		t.Fatalf("synced fields not copied: %+v", got)
 	}
 	if got.Theme != ThemeLight || got.Language != "en" || got.UIScale != 0 || got.LastDeckID != 0 ||
-		got.SeenAchievements != nil || got.SeenAchievementIDs != nil {
+		got.SeenAchievements != nil || got.SeenAchievementIDs != nil || got.HideStudyRewards {
 		t.Fatalf("local fields copied: %+v", got)
 	}
 	if !syncedSettingsEqual(got, src) || syncedSettingsEqual(dst, src) {

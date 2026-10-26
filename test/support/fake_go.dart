@@ -444,6 +444,7 @@ class FakeGo {
     'minimalist': false,
     'reduceMotion': 'system',
     'showProgress': true,
+    'showStudyRewards': true,
     'dailyGoalKind': '',
     'dailyGoal': 0,
     'restDaysPerWeek': 0,
@@ -1247,6 +1248,10 @@ class FakeGo {
     });
     handle('app.SetShowProgress', (args) {
       settings = {...settings, 'showProgress': args[0]};
+      return null;
+    });
+    handle('app.SetShowStudyRewards', (args) {
+      settings = {...settings, 'showStudyRewards': args[0]};
       return null;
     });
     handle('progress.Achievements', (_) => achievements);

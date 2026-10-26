@@ -42,6 +42,10 @@ class SettingsModel extends ChangeNotifier {
   /// belongs to the device.
   bool showProgress = true;
 
+  /// "Show rewards while studying": the banner when an answer reaches the
+  /// daily goal, a level or an achievement; it belongs to the device.
+  bool showStudyRewards = true;
+
   /// The daily goal: "cards" or "minutes" with [dailyGoal] of them, or ""
   /// for none.
   String dailyGoalKind = '';
@@ -164,6 +168,7 @@ class SettingsModel extends ChangeNotifier {
       minimalist = s.minimalist;
       reduceMotion = s.reduceMotion;
       showProgress = s.showProgress;
+      showStudyRewards = s.showStudyRewards;
       dailyGoalKind = s.dailyGoalKind;
       dailyGoal = s.dailyGoal;
       restDaysPerWeek = s.restDaysPerWeek;
@@ -254,6 +259,15 @@ class SettingsModel extends ChangeNotifier {
     notifyListeners();
     if (!await guard(() => golang.app.setShowProgress(on))) {
       showProgress = !on;
+      notifyListeners();
+    }
+  }
+
+  Future<void> setShowStudyRewards(bool on) async {
+    showStudyRewards = on;
+    notifyListeners();
+    if (!await guard(() => golang.app.setShowStudyRewards(on))) {
+      showStudyRewards = !on;
       notifyListeners();
     }
   }

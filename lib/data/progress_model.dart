@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:cardflip/features/progress/session_rewards.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 
 import 'deck_list_model.dart';
@@ -28,6 +29,16 @@ class ProgressModel extends ChangeNotifier {
   /// The tiers [markSeen] marked, which Go may still report as new until
   /// the next load.
   final _marked = <String>{};
+
+  /// A study session left before its summary, whose rewards no banner
+  /// showed the deck list's message names (add-study-rewards design
+  /// decision 4); null when there is none.
+  SessionRewards? pendingSession;
+
+  /// Hands over [rewards] of a session left before its summary. It does
+  /// not notify: the session closing does, and a study screen calls it
+  /// while it is disposed.
+  void leftSession(SessionRewards rewards) => pendingSession = rewards;
 
   /// The earned achievement tiers this device has not shown yet.
   List<golang.NewAchievement> get newAchievements => [

@@ -4490,6 +4490,12 @@ abstract class AppLocalizations {
   /// **'Daily goal reached'**
   String get goalReached;
 
+  /// Reward banner while studying when an answer raised the level, e.g. "Level 13".
+  ///
+  /// In en, this message translates to:
+  /// **'Level {level}'**
+  String levelBanner(int level);
+
   /// Summary line when the session raised the level, e.g. "Reached level 13".
   ///
   /// In en, this message translates to:
@@ -5125,6 +5131,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'On the deck list and after studying. Only on this device.'**
   String get showStreaksAndGoalsHelp;
+
+  /// No description provided for @showStudyRewards.
+  ///
+  /// In en, this message translates to:
+  /// **'Show rewards while studying'**
+  String get showStudyRewards;
+
+  /// No description provided for @showStudyRewardsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A short banner when you reach your goal, a level or an achievement. Only on this device.'**
+  String get showStudyRewardsHelp;
 
   /// No description provided for @deckProgressInList.
   ///

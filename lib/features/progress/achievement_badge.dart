@@ -139,10 +139,21 @@ class _BadgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final scale = size.width / extent;
+    // In device units: under a scaled canvas, a shadow can keep the
+    // rasterizer from finishing (seen with badges under 60 pixels).
+    if (shadow) {
+      final seal = _seal.transform(
+        (Matrix4.identity()
+              ..translateByDouble(size.width / 2, size.height / 2, 0, 1)
+              ..scaleByDouble(scale, scale, 1, 1))
+            .storage,
+      );
+      canvas.drawShadow(seal, Colors.black, 2 * scale, false);
+    }
     canvas
-      ..scale(size.width / extent)
+      ..scale(scale)
       ..translate(extent / 2, extent / 2);
-    if (shadow) canvas.drawShadow(_seal, Colors.black, 2, false);
     canvas
       ..drawPath(_seal, Paint()..color = rim.seal)
       ..drawCircle(

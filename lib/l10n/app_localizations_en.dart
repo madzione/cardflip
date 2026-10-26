@@ -3603,6 +3603,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get goalReached => 'Daily goal reached';
 
   @override
+  String levelBanner(int level) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+
+    return 'Level $levelString';
+  }
+
+  @override
   String levelReached(int level) {
     final intl.NumberFormat levelNumberFormat =
         intl.NumberFormat.decimalPattern(localeName);
@@ -4044,6 +4053,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get showStreaksAndGoalsHelp =>
       'On the deck list and after studying. Only on this device.';
+
+  @override
+  String get showStudyRewards => 'Show rewards while studying';
+
+  @override
+  String get showStudyRewardsHelp =>
+      'A short banner when you reach your goal, a level or an achievement. Only on this device.';
 
   @override
   String get deckProgressInList => 'Show deck progress in the deck list';

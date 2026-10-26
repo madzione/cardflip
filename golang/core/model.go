@@ -689,6 +689,9 @@ type Settings struct {
 	// HideProgress hides the streak and goal on the deck list and the study
 	// summary; stored inverted so that they show by default.
 	HideProgress bool `json:"hideProgress,omitempty"`
+	// HideStudyRewards hides the reward banner while studying; stored
+	// inverted so that it shows by default.
+	HideStudyRewards bool `json:"hideStudyRewards,omitempty"`
 	// GoalSuggestionShown records the one-time suggestion to set a daily
 	// goal.
 	GoalSuggestionShown bool `json:"goalSuggestion,omitempty"`

@@ -2,21 +2,21 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-/// A short, one-shot celebration (progress spec, "Celebrations"): [icon]
-/// grows in and fades out while a few particles in the theme's colours
-/// burst from it. It takes [duration], under two seconds, then calls
+/// A short, one-shot celebration (progress spec, "Celebrations"): a few
+/// particles in the theme's colours burst from the centre, from [icon] if
+/// given, which grows in and fades out. It takes [duration], under two seconds, then calls
 /// [onEnd]. It ignores pointers, so whatever it covers stays usable, and it
 /// may paint outside its box. Callers leave it out when reduce motion is in
 /// effect.
 class Celebration extends StatelessWidget {
   const Celebration({
     super.key,
-    required this.icon,
+    this.icon,
     this.onEnd,
     this.duration = const Duration(milliseconds: 1600),
   });
 
-  final IconData icon;
+  final IconData? icon;
   final VoidCallback? onEnd;
   final Duration duration;
 
@@ -34,20 +34,23 @@ class Celebration extends StatelessWidget {
             // In over the first quarter, out over the last third.
             final scale = Curves.easeOutBack.transform(math.min(t * 4, 1));
             final opacity = t < 2 / 3 ? 1.0 : (1 - t) * 3;
+            final icon = this.icon;
             return CustomPaint(
               painter: _Particles(t: t, colors: particles),
               // The lines it covers may be lower than the icon.
-              child: OverflowBox(
-                maxWidth: double.infinity,
-                maxHeight: double.infinity,
-                child: Opacity(
-                  opacity: opacity.clamp(0, 1),
-                  child: Transform.scale(
-                    scale: 0.6 + 0.6 * scale,
-                    child: Icon(icon, size: 48, color: colors.primary),
-                  ),
-                ),
-              ),
+              child: icon == null
+                  ? null
+                  : OverflowBox(
+                      maxWidth: double.infinity,
+                      maxHeight: double.infinity,
+                      child: Opacity(
+                        opacity: opacity.clamp(0, 1),
+                        child: Transform.scale(
+                          scale: 0.6 + 0.6 * scale,
+                          child: Icon(icon, size: 48, color: colors.primary),
+                        ),
+                      ),
+                    ),
             );
           },
         ),

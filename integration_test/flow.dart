@@ -146,8 +146,8 @@ Future<void> runAppFlow(
     await tester.tap(find.byKey(const Key('editor-submit')));
     await idle();
 
-    // A daily goal of 3 cards.
-    step = 'Set a daily goal of 3 cards.';
+    // A daily goal of 2 cards, reached before the session's last card.
+    step = 'Set a daily goal of 2 cards.';
     await go('Settings');
     final goal = find.byKey(const Key('daily-goal'));
     await scrollSettingsTo(goal);
@@ -161,11 +161,11 @@ Future<void> runAppFlow(
       ),
     );
     await idle();
-    await tester.enterText(find.byKey(const Key('daily-goal-value')), '3');
+    await tester.enterText(find.byKey(const Key('daily-goal-value')), '2');
     await tester.tap(find.descendant(of: dialog, matching: find.text('Save')));
     await idle();
     expect(
-      find.descendant(of: goal, matching: find.text('3 cards a day')),
+      find.descendant(of: goal, matching: find.text('2 cards a day')),
       findsOneWidget,
     );
 
@@ -179,7 +179,7 @@ Future<void> runAppFlow(
       findsOneWidget,
     );
     expect(
-      find.descendant(of: header, matching: find.text('0 / 3 cards')),
+      find.descendant(of: header, matching: find.text('0 / 2 cards')),
       findsOneWidget,
     );
     final counts = find.byKey(
@@ -237,7 +237,21 @@ Future<void> runAppFlow(
     await idle();
     expect(rich('Paris'), findsWidgets);
     await tester.tap(find.byKey(const Key('rate-4')));
+    // The second answer reaches the goal: a banner says so on the next
+    // card, without settling, which would let it finish.
+    step = 'A banner says the goal was reached.';
+    final banner = find.byKey(const Key('reward-banner'));
+    for (var i = 0; i < 50 && banner.evaluate().isEmpty; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await tester.pump(const Duration(milliseconds: 20));
+    }
+    expect(
+      find.descendant(of: banner, matching: find.text('Daily goal reached')),
+      findsOneWidget,
+    );
+    // It goes by itself.
     await idle();
+    expect(banner, findsNothing);
     expect(rich('[...] is in France'), findsNothing);
     expect(rich('Paris is in [...]'), findsOneWidget);
     await tester.tap(find.text('Show answer'));
@@ -246,9 +260,17 @@ Future<void> runAppFlow(
     await idle();
     expect(find.text('Session complete'), findsOneWidget);
     expect(find.textContaining('You studied 3 cards'), findsOneWidget);
-    // The first session of the day starts the streak and reaches the goal.
+    // The first session of the day starts the streak and reaches the goal,
+    // which the reward card says.
     step = 'The summary shows the streak and the goal.';
     expect(find.text('Streak extended to 1 day'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('reward-card')),
+        matching: find.text('Daily goal reached'),
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Daily goal reached'), findsOneWidget);
     // 3 answers, the study day and the goal: 33 XP of the 50 for level 2.
     expect(find.text('Level 1 · 17 XP to level 2'), findsOneWidget);
@@ -284,7 +306,7 @@ Future<void> runAppFlow(
       findsOneWidget,
     );
     expect(
-      find.descendant(of: header, matching: find.text('3 / 3 cards')),
+      find.descendant(of: header, matching: find.text('3 / 2 cards')),
       findsOneWidget,
     );
     expect(

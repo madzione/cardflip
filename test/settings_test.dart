@@ -499,12 +499,31 @@ void main() {
       final show = find.byKey(const Key('show-progress'));
       await scrollTo(tester, show);
       expect(tester.widget<SwitchListTile>(show).value, isTrue);
+
+      // Show rewards while studying: on by default, saved, and hidden while
+      // Show streaks and goals is off (spec).
+      final rewards = find.byKey(const Key('show-study-rewards'));
+      await scrollTo(tester, rewards);
+      expect(tester.widget<SwitchListTile>(rewards).value, isTrue);
+      await tester.tap(rewards);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetShowStudyRewards'), [
+        [false],
+      ]);
+      expect(tester.widget<SwitchListTile>(rewards).value, isFalse);
+
+      await tester.scrollUntilVisible(
+        show,
+        -200,
+        scrollable: find.byType(Scrollable).last,
+      );
       await tester.tap(show);
       await tester.pumpAndSettle();
       expect(go.callsTo('app.SetShowProgress'), [
         [false],
       ]);
       expect(tester.widget<SwitchListTile>(show).value, isFalse);
+      expect(rewards, findsNothing);
 
       // Show deck progress in the deck list: off by default, and saved.
       final inList = find.byKey(const Key('deck-progress-in-list'));

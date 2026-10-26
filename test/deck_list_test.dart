@@ -18,6 +18,7 @@ import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/time_format.dart';
 
 import 'deck_overview_test.dart' show handleStudy;
+import 'study_test.dart' show FakeStudy, studyCard;
 import 'support/fake_go.dart';
 
 Color? colorOf(WidgetTester tester, Finder scope, String text) {
@@ -1826,6 +1827,134 @@ void pickerTests() {
       final go = await pumpRecap(tester, settings: {'showProgress': false});
       expect(recap, findsNothing);
       expect(go.callsTo('progress.WeeklyRecap'), isEmpty);
+    });
+  });
+
+  group('rewards after leaving a session', () {
+    final message = find.byKey(const Key('new-achievements'));
+
+    String messageText(WidgetTester tester) => tester
+        .widget<Text>(
+          find.descendant(of: message, matching: find.byType(Text)).first,
+        )
+        .data!;
+
+    /// Opens a session of two cards from the deck list with [before] as
+    /// the progress.
+    Future<FakeGo> open(
+      WidgetTester tester,
+      Map<String, Object?> before, {
+      bool banner = true,
+    }) async {
+      final go = FakeGo()..progress = before;
+      go.settings = {
+        ...go.settings,
+        'dailyGoalKind': 'cards',
+        'dailyGoal': 30,
+        'showStudyRewards': banner,
+      };
+      FakeStudy(go, [
+        studyCard(1, 'hola', 'hello'),
+        studyCard(2, 'uno', 'one'),
+      ]);
+      await pumpApp(tester);
+      await openDeckMenu(tester, 'Default', 'Study');
+      expect(find.byType(StudyScreen), findsOneWidget);
+      return go;
+    }
+
+    /// Answers the card on screen Good with [after] as the progress, which
+    /// reloads as Go reports the change.
+    Future<void> answer(
+      WidgetTester tester,
+      FakeGo go,
+      Map<String, Object?> after,
+    ) async {
+      go.progress = after;
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      go.emitChange(kind: 'answer');
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(StudyScreen), findsNothing);
+    }
+
+    Map<String, Object?> at(
+      int cards,
+      int xp, [
+      List<String> tiers = const [],
+    ]) => progressJson(
+      current: 3,
+      cards: cards,
+      goalKind: 'cards',
+      goal: 30,
+      xp: xp,
+      newAchievements: [
+        for (final t in tiers)
+          newAchievementJson(t.split(':')[0], int.parse(t.split(':')[1])),
+      ],
+    );
+
+    testWidgets('banner off, left with Back', (tester) async {
+      // Banner off, left with Back (progress spec): one message for the
+      // level and the goal.
+      final go = await open(tester, at(29, 3890), banner: false);
+      await answer(tester, go, at(30, 3901));
+      expect(find.byKey(const Key('reward-banner')), findsNothing);
+      await back(tester);
+      expect(messageText(tester), 'Reached level 13 · Daily goal reached');
+      // Once.
+      go.emitChange(kind: 'sync');
+      await tester.pumpAndSettle();
+      expect(go.callsTo('progress.MarkSeen'), isEmpty);
+    });
+
+    testWidgets('with a tier, banner off', (tester) async {
+      final go = await open(tester, at(29, 3890), banner: false);
+      await answer(tester, go, at(30, 3901, ['answers:1000']));
+      await back(tester);
+      expect(
+        messageText(tester),
+        'Reached level 13 · Daily goal reached · New: 1,000 answers',
+      );
+      // Marked shown by the session, once.
+      expect(go.callsTo('progress.MarkSeen'), [
+        [
+          ['answers:1000'],
+        ],
+      ]);
+    });
+
+    testWidgets('banner shown, left with Back', (tester) async {
+      // Banner shown, left with Back (progress spec): nothing more.
+      final go = await open(tester, at(10, 3890));
+      await answer(tester, go, at(11, 3901));
+      await back(tester);
+      expect(message, findsNothing);
+    });
+
+    testWidgets('a tier the banner showed is not told again', (tester) async {
+      // Shown by the banner (progress spec, "New achievement notice").
+      final go = await open(tester, at(10, 3749));
+      await answer(tester, go, at(11, 3760, ['answers:1000']));
+      await back(tester);
+      expect(message, findsNothing);
+      expect(go.callsTo('progress.MarkSeen'), hasLength(1));
+    });
+
+    testWidgets('nothing after the summary', (tester) async {
+      final go = await open(tester, at(28, 3890), banner: false);
+      await answer(tester, go, at(29, 3895));
+      await answer(tester, go, at(30, 3901));
+      expect(find.text('Session complete'), findsOneWidget);
+      await back(tester);
+      expect(message, findsNothing);
     });
   });
 }

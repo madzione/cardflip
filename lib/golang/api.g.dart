@@ -294,6 +294,12 @@ class GoApp {
   Future<void> setShowRemainingCounts(bool on_) =>
       emitter.request<Object?>('app.SetShowRemainingCounts', [on_]);
 
+  /// SetShowStudyRewards sets whether the study screen shows a banner when an
+  /// answer reaches the daily goal, a level or an achievement. It belongs to
+  /// the device.
+  Future<void> setShowStudyRewards(bool on_) =>
+      emitter.request<Object?>('app.SetShowStudyRewards', [on_]);
+
   /// SetSpaceAnswersGood sets whether Space and Enter choose Good once the
   /// answer is shown; when off, they only reveal the answer.
   Future<void> setSpaceAnswersGood(bool on_) =>
@@ -2140,6 +2146,7 @@ class Settings {
     required this.minimalist,
     required this.reduceMotion,
     required this.showProgress,
+    required this.showStudyRewards,
     required this.dailyGoalKind,
     required this.dailyGoal,
     required this.restDaysPerWeek,
@@ -2180,6 +2187,7 @@ class Settings {
       minimalist: m['minimalist'] as bool,
       reduceMotion: m['reduceMotion'] as String,
       showProgress: m['showProgress'] as bool,
+      showStudyRewards: m['showStudyRewards'] as bool,
       dailyGoalKind: m['dailyGoalKind'] as String,
       dailyGoal: m['dailyGoal'] as int,
       restDaysPerWeek: m['restDaysPerWeek'] as int,
@@ -2299,6 +2307,11 @@ class Settings {
   /// study summary ("Show streaks and goals").
   final bool showProgress;
 
+  /// ShowStudyRewards shows a banner while studying when an answer reaches
+  /// the daily goal, a level or an achievement ("Show rewards while
+  /// studying").
+  final bool showStudyRewards;
+
   /// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
   /// DailyGoal is the number of cards or minutes.
   final String dailyGoalKind;
@@ -2351,6 +2364,7 @@ class Settings {
     'minimalist': minimalist,
     'reduceMotion': reduceMotion,
     'showProgress': showProgress,
+    'showStudyRewards': showStudyRewards,
     'dailyGoalKind': dailyGoalKind,
     'dailyGoal': dailyGoal,
     'restDaysPerWeek': restDaysPerWeek,
@@ -2360,7 +2374,7 @@ class Settings {
   };
 
   @override
-  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown, deckProgressInList: $deckProgressInList, recapDismissedWeek: $recapDismissedWeek)';
+  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, showStudyRewards: $showStudyRewards, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown, deckProgressInList: $deckProgressInList, recapDismissedWeek: $recapDismissedWeek)';
 }
 
 /// UndoInfo names the steps Undo and Redo act on, e.g. "Delete 3 notes";

@@ -22,7 +22,7 @@ var localSettings = []string{
 	"Theme", "Language", "UIScale", "Minimalist", "ReduceMotion",
 	"LastNoteTypeID", "LastDeckID", "LastDeckByNoteType", "LastDueDate", "CurrentDeckID", "RecentDecks",
 	"BrowserColumns", "BrowserMode", "BrowserSplit", "SavedSearches", "DefaultSearch",
-	"Backup", "PersistenceNoticeShown", "HideProgress", "GoalSuggestionShown",
+	"Backup", "PersistenceNoticeShown", "HideProgress", "HideStudyRewards", "GoalSuggestionShown",
 	"SeenAchievements", "SeenAchievementIDs", "DeckProgressInList", "RecapDismissedWeek",
 }
 

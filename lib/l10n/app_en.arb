@@ -3839,6 +3839,16 @@
     }
   },
   "goalReached": "Daily goal reached",
+  "levelBanner": "Level {level}",
+  "@levelBanner": {
+    "description": "Reward banner while studying when an answer raised the level, e.g. \"Level 13\".",
+    "placeholders": {
+      "level": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "levelReached": "Reached level {level}",
   "@levelReached": {
     "description": "Summary line when the session raised the level, e.g. \"Reached level 13\".",
@@ -4229,6 +4239,8 @@
   },
   "showStreaksAndGoals": "Show streaks and goals",
   "showStreaksAndGoalsHelp": "On the deck list and after studying. Only on this device.",
+  "showStudyRewards": "Show rewards while studying",
+  "showStudyRewardsHelp": "A short banner when you reach your goal, a level or an achievement. Only on this device.",
   "deckProgressInList": "Show deck progress in the deck list",
   "deckProgressInListHelp": "A thin bar of new, learning, young and mature cards under each deck. Only on this device.",
   "deckProgress": "Progress",

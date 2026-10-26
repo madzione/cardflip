@@ -18,8 +18,9 @@ import 'package:cardflip/features/browse/set_due_date_dialog.dart';
 import 'package:cardflip/features/decks/filtered_deck_screen.dart';
 import 'package:cardflip/features/editor/math_insert.dart' show MenuEntryLabel;
 import 'package:cardflip/features/editor/note_editor_screen.dart';
-import 'package:cardflip/features/progress/achievements.dart';
-import 'package:cardflip/features/progress/celebration.dart';
+import 'package:cardflip/features/progress/reward_card.dart';
+import 'package:cardflip/features/progress/reward_banner.dart';
+import 'package:cardflip/features/progress/session_rewards.dart';
 import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/card_view.dart';
@@ -252,30 +253,38 @@ class _StudyScreenState extends State<StudyScreen> {
   /// summary can say the streak was extended; null until known.
   bool? _studiedBefore;
 
-  /// Whether the daily goal was already reached when the session started,
-  /// so the summary celebrates only reaching it in this session; null
-  /// until known.
-  bool? _goalReachedBefore;
+  /// The goal and level when the session started, what the session earned
+  /// and what a reward banner showed (progress spec, "Reward banner during
+  /// study" and "Reward card on the summary").
+  final _rewards = SessionRewards();
+  late final ProgressModel _progress;
 
-  /// The level when the session started, so the summary can say the
-  /// session raised it; null until known.
-  int? _levelBefore;
+  /// Set by an answer until the progress reloads after it, so that only
+  /// answers find rewards: an undo reloads it too.
+  bool _awaitingProgress = false;
+
+  /// The reward banner on show, and its number, which a new one changes so
+  /// it starts again.
+  RewardEvents? _banner;
+  int _bannerCount = 0;
 
   @override
   void initState() {
     super.initState();
-    final progress = AppScope.read(context).progress.progress;
+    _progress = AppScope.read(context).progress;
+    // A session left before stays untold once another one starts.
+    _progress.pendingSession = null;
+    final progress = _progress.progress;
     if (progress != null) {
       _studiedBefore = progress.todayStudied;
-      _goalReachedBefore = progress.goalReached;
-      _levelBefore = progress.level;
+      _rewards.start(progress);
     } else if (AppScope.read(context).settings.showProgress) {
       golang.progress.today().then<void>((p) {
         _studiedBefore ??= p.todayStudied;
-        _goalReachedBefore ??= p.goalReached;
-        _levelBefore ??= p.level;
+        _rewards.start(p);
       }, onError: (Object _) {});
     }
+    _progress.addListener(_progressChanged);
     _openSessions = AppScope.read(context).openSessions;
     _openSessions.value++;
     _barsHidden = AppScope.read(context).barsHidden;
@@ -294,6 +303,7 @@ class _StudyScreenState extends State<StudyScreen> {
 
   @override
   void dispose() {
+    _progress.removeListener(_progressChanged);
     _changes?.cancel();
     _autoTimer?.cancel();
     unawaited(_dropVoice());
@@ -303,9 +313,48 @@ class _StudyScreenState extends State<StudyScreen> {
     _typedFocus.dispose();
     _screenFocus.dispose();
     _learningTimer?.cancel();
+    // Left before the summary: the deck list names what no banner showed.
+    if (!_summaryShown) _progress.leftSession(_rewards);
     _openSessions.value--;
     if (_hidingBars) _barsHidden.value--;
     super.dispose();
+  }
+
+  /// Whether the session-complete screen is on show.
+  bool get _summaryShown {
+    final state = _state;
+    return state != null && state.card == null && state.studied > 0;
+  }
+
+  /// The progress reloaded: after an answer, finds what it earned; on the
+  /// summary, after the last answer, and records everything as shown
+  /// there. The tiers found belong to the session from now on, so the deck
+  /// list does not tell about them.
+  void _progressChanged() {
+    final p = _progress.progress;
+    final summary = _summaryShown;
+    if (p == null || !(_awaitingProgress || summary)) return;
+    _awaitingProgress = false;
+    final events = _rewards.update(p, _progress.newAchievements);
+    if (events.tiers.isNotEmpty) _progress.markSeen(events.tiers);
+    if (summary) {
+      _rewards.showAll();
+    } else if (!events.isEmpty && mounted) {
+      _showBanner(events);
+    }
+  }
+
+  /// Shows a reward banner for [events], replacing one on show, unless
+  /// rewards while studying, or streaks and goals, are off. They count as
+  /// shown from now on, also when the session is left during the banner.
+  void _showBanner(RewardEvents events) {
+    final settings = AppScope.read(context).settings;
+    if (!settings.showProgress || !settings.showStudyRewards) return;
+    _rewards.shown.addAll(events.keys);
+    setState(() {
+      _banner = events;
+      _bannerCount++;
+    });
   }
 
   /// Runs a study call and shows its result; a new card starts unrevealed.
@@ -383,8 +432,13 @@ class _StudyScreenState extends State<StudyScreen> {
       _state = state;
       _pending = null;
       _error = null;
-      // The session's cards are done: auto advance ends with it.
-      if (state.card == null) _autoAdvance = false;
+      // The session's cards are done: auto advance ends with it, and the
+      // summary shows the rewards instead of a banner.
+      if (state.card == null) {
+        _autoAdvance = false;
+        _banner = null;
+        if (state.studied > 0) _rewards.showAll();
+      }
       if (newCard) {
         _revealed = false;
         _shownAgain = answer && sameCard && state.card != null;
@@ -696,6 +750,7 @@ class _StudyScreenState extends State<StudyScreen> {
     _player.stop();
     final ms = _timer.elapsedMilliseconds;
     final studied = _state!.studied;
+    _awaitingProgress = true;
     await _run(
       () => golang.study.answer(card.cardID, rating, ms),
       answer: true,
@@ -1447,8 +1502,7 @@ class _StudyScreenState extends State<StudyScreen> {
           : _Summary(
               state: state,
               studiedBefore: _studiedBefore,
-              goalReachedBefore: _goalReachedBefore,
-              levelBefore: _levelBefore,
+              rewards: _rewards,
               onCheck: () => _run(golang.study.current),
               onContinue: onContinue,
             );
@@ -1538,6 +1592,25 @@ class _StudyScreenState extends State<StudyScreen> {
                   top: 8,
                   start: 8,
                   child: _MarkedStar(),
+                ),
+              // The bottom of the card area is mostly empty, as cards start
+              // at the top; the counts and buttons stay clear.
+              if (_banner case final banner?
+                  when settings.showProgress && settings.showStudyRewards)
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 12,
+                  child: Center(
+                    child: RewardBanner(
+                      key: ValueKey('reward-banner-$_bannerCount'),
+                      events: banner,
+                      minimalist: settings.minimalist,
+                      onDone: () {
+                        if (mounted) setState(() => _banner = null);
+                      },
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -2042,19 +2115,16 @@ class _Summary extends StatelessWidget {
   const _Summary({
     required this.state,
     required this.studiedBefore,
-    required this.goalReachedBefore,
-    required this.levelBefore,
+    required this.rewards,
     required this.onCheck,
     this.onContinue,
   });
 
   final golang.StudyState state;
 
-  /// See [_ProgressLines.studiedBefore],
-  /// [_ProgressLines.goalReachedBefore] and [_ProgressLines.levelBefore].
+  /// See [_ProgressLines.studiedBefore] and [_ProgressLines.rewards].
   final bool? studiedBefore;
-  final bool? goalReachedBefore;
-  final int? levelBefore;
+  final SessionRewards rewards;
   final VoidCallback onCheck;
 
   /// Set when a learning card became due while waiting.
@@ -2078,12 +2148,7 @@ class _Summary extends StatelessWidget {
         studied,
         if (learning != null) l.moreLearningDue(formatDue(learning)),
       ],
-      extra: _ProgressLines(
-        studiedBefore: studiedBefore,
-        goalReachedBefore: goalReachedBefore,
-        levelBefore: levelBefore,
-        newAchievements: true,
-      ),
+      extra: _ProgressLines(studiedBefore: studiedBefore, rewards: rewards),
       action: Wrap(
         spacing: 12,
         children: [
@@ -2100,71 +2165,35 @@ class _Summary extends StatelessWidget {
 }
 
 /// The streak, goal and level lines of the summary and nothing-due
-/// screens (progress spec, "Summary progress lines"), the summary's line
-/// of new achievements (study-session spec, "New achievements on the
-/// summary"), and the one-time suggestion to set a daily goal. On the
-/// summary, it celebrates the daily goal reached, achievements earned or
-/// the level raised in the session (progress spec, "Celebrations").
-/// Nothing is shown while streaks and goals are off.
+/// screens (progress spec, "Summary progress lines") and the one-time
+/// suggestion to set a daily goal. On the summary, the reward card above
+/// them shows the daily goal reached, the level raised and achievements
+/// earned in the session (progress spec, "Reward card on the summary";
+/// study-session spec, "New achievements on the summary") instead of
+/// lines. Nothing is shown while streaks and goals are off.
 class _ProgressLines extends StatefulWidget {
-  const _ProgressLines({
-    required this.studiedBefore,
-    this.goalReachedBefore,
-    this.levelBefore,
-    this.newAchievements = false,
-  });
+  const _ProgressLines({required this.studiedBefore, this.rewards});
 
   /// Whether today was a study day when the session started: if not and it
   /// is now, the session extended the streak.
   final bool? studiedBefore;
 
-  /// Whether the daily goal was reached when the session started: if not
-  /// and it is now, the session reached it. Null when unknown, or on the
-  /// nothing-due screen, which celebrates nothing.
-  final bool? goalReachedBefore;
-
-  /// The level when the session started: if it is higher now, the session
-  /// raised it. Null when unknown, or on the nothing-due screen.
-  final int? levelBefore;
-
-  /// Whether to name the achievement tiers not shown yet, and mark them
-  /// shown so the deck list does not tell again.
-  final bool newAchievements;
+  /// The session's rewards on the summary: whether the goal was reached
+  /// and the level when the session started (if not and it is now, or if
+  /// the level is higher now, the session reached them) and the tiers it
+  /// earned. Null on the nothing-due screen, which celebrates nothing.
+  final SessionRewards? rewards;
 
   @override
   State<_ProgressLines> createState() => _ProgressLinesState();
 }
 
 class _ProgressLinesState extends State<_ProgressLines> {
-  /// The new achievement tiers named here, kept once marked shown.
-  final _new = <golang.NewAchievement>[];
-
-  /// What the celebration shows while it plays. It is decided once
-  /// ([_celebrated]), the first time there is something to celebrate, so
-  /// it plays at most once, and never under reduce motion.
-  IconData? _celebration;
-  bool _celebrated = false;
-
   @override
   void initState() {
     super.initState();
     // The numbers after the session's last answer.
     AppScope.read(context).progress.load();
-  }
-
-  /// The tiers new so far, which are then marked shown, to name on the
-  /// summary: without Level tiers when [levelUp] says the level line names
-  /// the level reached (study-session spec).
-  List<golang.NewAchievement> _named(ProgressModel progress, bool levelUp) {
-    final fresh = progress.newAchievements;
-    if (fresh.isNotEmpty) {
-      _new.addAll(fresh);
-      progress.markSeen(fresh);
-    }
-    return [
-      for (final a in _new)
-        if (!levelUp || a.id != 'level') a,
-    ];
   }
 
   @override
@@ -2179,48 +2208,50 @@ class _ProgressLinesState extends State<_ProgressLines> {
           return const SizedBox.shrink();
         }
         final l = context.l10n;
-        final levelBefore = widget.levelBefore;
+        final rewards = widget.rewards;
+        final levelBefore = rewards?.levelBefore;
         final levelUp = levelBefore != null && levelBefore < p.level;
-        final named = widget.newAchievements
-            ? _named(app.progress, levelUp)
-            : const <golang.NewAchievement>[];
+        final goalUp = rewards?.goalReachedBefore == false && p.goalReached;
+        // The session's tiers, without Level tiers when the card names the
+        // level reached (study-session spec).
+        final named = [
+          for (final a in rewards?.tiers ?? const <golang.NewAchievement>[])
+            if (!levelUp || a.id != 'level') a,
+        ];
         final lines = [
           if (widget.studiedBefore == false && p.todayStudied)
             l.streakExtended(p.current)
           else if (p.current > 0)
             l.streakCurrent(p.current),
           ?switch (p.goalKind) {
+            _ when goalUp => null,
             _ when p.goalReached => l.goalReached,
             'cards' => l.goalCardsLeft(p.goal - p.todayCards),
             'minutes' => l.goalMinutesLeft(p.goal - p.todayMinutes),
             _ => null,
           },
-          if (levelUp)
-            l.levelReached(p.level)
-          else
+          if (!levelUp)
             l.levelXpLeft(p.level, p.nextLevelXP - p.xp, p.level + 1),
-          if (named.isNotEmpty) newAchievementsLine(l, named),
         ];
-        if (widget.newAchievements && !_celebrated) {
-          final icon = widget.goalReachedBefore == false && p.goalReached
-              ? Icons.flag_outlined
-              : named.isNotEmpty
-              ? Icons.military_tech_outlined
-              : levelUp
-              ? Icons.trending_up
-              : null;
-          if (icon != null) {
-            _celebrated = true;
-            if (!reduceMotion(context)) _celebration = icon;
-          }
-        }
-        final celebration = _celebration;
+        final card = RewardCard(
+          goalReached: goalUp,
+          levelFrom: (
+            level: levelBefore ?? p.level,
+            fraction: rewards?.levelFractionBefore ?? 0,
+          ),
+          levelTo: (level: p.level, fraction: levelFraction(p)),
+          tiers: named,
+          animate: !reduceMotion(context),
+          minimalist: settings.minimalist,
+        );
         final suggest =
             settings.dailyGoalKind.isEmpty && !settings.goalSuggestionShown;
-        final column = Column(
+        return Column(
           key: const Key('progress-lines'),
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (!card.isEmpty)
+              Padding(padding: const EdgeInsets.only(bottom: 12), child: card),
             for (final line in lines)
               Padding(
                 padding: const EdgeInsets.only(bottom: 6),
@@ -2250,22 +2281,6 @@ class _ProgressLinesState extends State<_ProgressLines> {
                 ],
               ),
             ],
-          ],
-        );
-        return Stack(
-          clipBehavior: Clip.none,
-          children: [
-            column,
-            if (celebration != null)
-              Positioned.fill(
-                child: Celebration(
-                  key: const Key('celebration'),
-                  icon: celebration,
-                  onEnd: () {
-                    if (mounted) setState(() => _celebration = null);
-                  },
-                ),
-              ),
           ],
         );
       },

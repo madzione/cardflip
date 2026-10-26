@@ -668,7 +668,7 @@ func TestGoalSettings(t *testing.T) {
 	s, _ := opened(t)
 	// Defaults, also in collections without the fields: no goal, streaks
 	// shown.
-	if st := must(s.app.Settings()); !st.ShowProgress || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.RestDaysPerWeek != 0 ||
+	if st := must(s.app.Settings()); !st.ShowProgress || !st.ShowStudyRewards || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.RestDaysPerWeek != 0 ||
 		st.GoalSuggestionShown {
 		t.Fatalf("default settings = %+v", st)
 	}
@@ -696,6 +696,14 @@ func TestGoalSettings(t *testing.T) {
 	}
 	check(t, s.app.SetShowProgress(false))
 	check(t, s.app.GoalSuggestionShown())
+	check(t, s.app.SetShowStudyRewards(false))
+	if st := must(s.app.Settings()); st.ShowProgress || st.ShowStudyRewards {
+		t.Fatalf("progress and rewards hidden: %+v", st)
+	}
+	check(t, s.app.SetShowStudyRewards(true))
+	if st := must(s.app.Settings()); !st.ShowStudyRewards {
+		t.Fatalf("rewards shown again: %+v", st)
+	}
 	// Deck progress in the deck list is off by default (spec), and no recap
 	// has been dismissed.
 	if st := must(s.app.Settings()); st.DeckProgressInList || st.RecapDismissedWeek != 0 {

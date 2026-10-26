@@ -3636,6 +3636,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get goalReached => 'Tagesziel erreicht';
 
   @override
+  String levelBanner(int level) {
+    final intl.NumberFormat levelNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String levelString = levelNumberFormat.format(level);
+
+    return 'Level $levelString';
+  }
+
+  @override
   String levelReached(int level) {
     final intl.NumberFormat levelNumberFormat =
         intl.NumberFormat.decimalPattern(localeName);
@@ -4081,6 +4090,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get showStreaksAndGoalsHelp =>
       'In der Stapelliste und nach dem Lernen. Nur auf diesem Gerät.';
+
+  @override
+  String get showStudyRewards => 'Belohnungen beim Lernen anzeigen';
+
+  @override
+  String get showStudyRewardsHelp =>
+      'Ein kurzes Banner, wenn du dein Ziel, ein Level oder einen Erfolg erreichst. Nur auf diesem Gerät.';
 
   @override
   String get deckProgressInList =>

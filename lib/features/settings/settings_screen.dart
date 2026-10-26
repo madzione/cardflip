@@ -406,6 +406,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.showProgress,
               onChanged: settings.setShowProgress,
             ),
+            if (settings.showProgress)
+              SwitchListTile(
+                key: const Key('show-study-rewards'),
+                title: Text(l.showStudyRewards),
+                subtitle: Text(l.showStudyRewardsHelp),
+                value: settings.showStudyRewards,
+                onChanged: settings.setShowStudyRewards,
+              ),
             SwitchListTile(
               key: const Key('deck-progress-in-list'),
               title: Text(l.deckProgressInList),

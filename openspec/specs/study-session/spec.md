@@ -349,16 +349,20 @@ A card shown before it is due because nothing else is due (learn ahead) SHALL ha
 - **THEN** the card's question is shown without the notice
 
 ### Requirement: New achievements on the summary
-When achievement tiers were earned during the session, the session-complete screen SHALL show one line naming them, after the streak and goal lines. A Level tier SHALL be left out of that line when the level line already says the level was reached. The session SHALL NOT be interrupted when a tier is earned.
+When achievement tiers were earned during the session, the session-complete screen SHALL name them in the reward card described in the `progress` capability, including tiers a reward banner already showed during the session. A Level tier SHALL be left out of that text when the card already says the level was reached. Earning a tier SHALL NOT pause the session or open a dialog.
 
 #### Scenario: Earned during the session
 - **WHEN** the user's 1,000th answer is in this session
-- **THEN** the summary shows "New: 1,000 answers" and no message appeared while studying
+- **THEN** the summary's reward card shows "New: 1,000 answers", and studying continued without a dialog
 
 #### Scenario: Several earned
 - **WHEN** the session earned Answers 1,000 and Study days 100
-- **THEN** the summary shows one line naming both
+- **THEN** the reward card names both
 
 #### Scenario: Level tier with the level line
 - **WHEN** the session raised the level to 10 and earned the Level 10 tier and Answers 1,000
-- **THEN** the summary says "Reached level 10" and "New: 1,000 answers"
+- **THEN** the reward card says "Reached level 10" and "New: 1,000 answers"
+
+#### Scenario: Already shown by a banner
+- **WHEN** a banner showed "New: 1,000 answers" earlier in the session
+- **THEN** the summary's reward card still names it

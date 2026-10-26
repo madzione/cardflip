@@ -125,6 +125,10 @@ type Settings struct {
 	// ShowProgress shows the streak and daily goal on the deck list and the
 	// study summary ("Show streaks and goals").
 	ShowProgress bool `json:"showProgress"`
+	// ShowStudyRewards shows a banner while studying when an answer reaches
+	// the daily goal, a level or an achievement ("Show rewards while
+	// studying").
+	ShowStudyRewards bool `json:"showStudyRewards"`
 	// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
 	// DailyGoal is the number of cards or minutes.
 	DailyGoalKind string `json:"dailyGoalKind"`
@@ -161,8 +165,9 @@ func (s *AppService) Settings() (Settings, error) {
 		QuestionFadeMs: int(st.QuestionFade() / time.Millisecond), RecentDecks: fromIDs(c.RecentDecks()),
 		UIScale: cmp.Or(st.UIScale, core.DefaultUIScale), Minimalist: st.Minimalist,
 		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem), ShowProgress: !st.HideProgress,
-		DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal, RestDaysPerWeek: st.RestDaysPerWeek,
-		GoalSuggestionShown: st.GoalSuggestionShown, DeckProgressInList: st.DeckProgressInList,
+		ShowStudyRewards: !st.HideStudyRewards, DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal,
+		RestDaysPerWeek: st.RestDaysPerWeek, GoalSuggestionShown: st.GoalSuggestionShown,
+		DeckProgressInList: st.DeckProgressInList,
 		RecapDismissedWeek: st.RecapDismissedWeek}, nil
 }
 
@@ -275,6 +280,13 @@ func (s *AppService) SetReduceMotion(mode string) error {
 // the streak and daily goal. It belongs to the device.
 func (s *AppService) SetShowProgress(on bool) error {
 	return s.updateSettings(func(st *core.Settings) { st.HideProgress = !on })
+}
+
+// SetShowStudyRewards sets whether the study screen shows a banner when an
+// answer reaches the daily goal, a level or an achievement. It belongs to
+// the device.
+func (s *AppService) SetShowStudyRewards(on bool) error {
+	return s.updateSettings(func(st *core.Settings) { st.HideStudyRewards = !on })
 }
 
 // SetDailyGoal sets the daily goal: kind "cards" or "minutes" with a value
