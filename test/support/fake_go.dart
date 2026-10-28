@@ -445,6 +445,8 @@ class FakeGo {
     'reduceMotion': 'system',
     'showProgress': true,
     'showStudyRewards': true,
+    'celebrationSounds': true,
+    'showLevelUpsWhileStudying': true,
     'dailyGoalKind': '',
     'dailyGoal': 0,
     'restDaysPerWeek': 0,
@@ -1252,6 +1254,14 @@ class FakeGo {
     });
     handle('app.SetShowStudyRewards', (args) {
       settings = {...settings, 'showStudyRewards': args[0]};
+      return null;
+    });
+    handle('app.SetCelebrationSounds', (args) {
+      settings = {...settings, 'celebrationSounds': args[0]};
+      return null;
+    });
+    handle('app.SetShowLevelUpsWhileStudying', (args) {
+      settings = {...settings, 'showLevelUpsWhileStudying': args[0]};
       return null;
     });
     handle('progress.Achievements', (_) => achievements);
@@ -2587,7 +2597,8 @@ const statsSections = [
 /// JSON for `progress.Today`: a [current] streak, [cards] and [minutes]
 /// today, a goal of [goal] [goalKind] ("cards" or "minutes"; "" for none)
 /// and [xp] XP. Today is studied when cards were answered; the streak is at
-/// risk otherwise.
+/// risk otherwise. The [week] defaults to the streak's days studied in a
+/// row, ending today or yesterday.
 Map<String, Object?> progressJson({
   int current = 0,
   int cards = 0,
@@ -2596,9 +2607,11 @@ Map<String, Object?> progressJson({
   int goal = 0,
   int? longest,
   int xp = 0,
+  List<String>? week,
   List<Map<String, Object?>> newAchievements = const [],
 }) => {
   'newAchievements': newAchievements,
+  'week': week ?? weekJson(current, todayStudied: cards > 0),
   ...levelFields(xp),
   'current': current,
   'atRisk': current > 0 && cards == 0,
@@ -2613,7 +2626,18 @@ Map<String, Object?> progressJson({
     'minutes' => minutes >= goal,
     _ => false,
   },
+  'goalXp': goalKind.isEmpty ? 0 : 20,
 };
+
+/// `Progress.week` for a [current] streak of days studied in a row, ending
+/// today when [todayStudied], yesterday otherwise.
+List<String> weekJson(int current, {required bool todayStudied}) {
+  final end = todayStudied ? 6 : 5;
+  return [
+    for (var i = 0; i < 7; i++)
+      i <= end && i > end - current ? 'study' : 'none',
+  ];
+}
 
 /// The level of [xp] XP as Go reports it: 50 × n XP from level n to n + 1.
 Map<String, Object?> levelFields(int xp) {
@@ -2691,8 +2715,12 @@ Map<String, Object?> newAchievementJson(String id, int threshold) {
         ? 'gold'
         : ['bronze', 'silver', 'gold', 'platinum'][i],
     'key': '$id:$threshold',
+    'xp': id == 'level' ? 0 : tierXP[tiers.length == 1 ? 2 : i],
   };
 }
+
+/// The XP of a bronze, silver, gold and platinum tier, as Go defines them.
+const tierXP = [25, 50, 100, 200];
 
 /// JSON for the Streaks section: a 9-day streak, a 41-day longest streak,
 /// 24 of 30 study days, and [goalDays] days that met the goal (null without

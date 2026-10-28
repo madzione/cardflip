@@ -46,6 +46,14 @@ class SettingsModel extends ChangeNotifier {
   /// daily goal, a level or an achievement; it belongs to the device.
   bool showStudyRewards = true;
 
+  /// "Celebration sounds and vibration": the sounds and vibration of the
+  /// celebration pages and reward banners; it belongs to the device.
+  bool celebrationSounds = true;
+
+  /// "Show level-ups while studying": the level page as soon as an answer
+  /// raises the level, instead of a banner; it belongs to the device.
+  bool showLevelUpsWhileStudying = true;
+
   /// The daily goal: "cards" or "minutes" with [dailyGoal] of them, or ""
   /// for none.
   String dailyGoalKind = '';
@@ -169,6 +177,8 @@ class SettingsModel extends ChangeNotifier {
       reduceMotion = s.reduceMotion;
       showProgress = s.showProgress;
       showStudyRewards = s.showStudyRewards;
+      celebrationSounds = s.celebrationSounds;
+      showLevelUpsWhileStudying = s.showLevelUpsWhileStudying;
       dailyGoalKind = s.dailyGoalKind;
       dailyGoal = s.dailyGoal;
       restDaysPerWeek = s.restDaysPerWeek;
@@ -268,6 +278,24 @@ class SettingsModel extends ChangeNotifier {
     notifyListeners();
     if (!await guard(() => golang.app.setShowStudyRewards(on))) {
       showStudyRewards = !on;
+      notifyListeners();
+    }
+  }
+
+  Future<void> setCelebrationSounds(bool on) async {
+    celebrationSounds = on;
+    notifyListeners();
+    if (!await guard(() => golang.app.setCelebrationSounds(on))) {
+      celebrationSounds = !on;
+      notifyListeners();
+    }
+  }
+
+  Future<void> setShowLevelUpsWhileStudying(bool on) async {
+    showLevelUpsWhileStudying = on;
+    notifyListeners();
+    if (!await guard(() => golang.app.setShowLevelUpsWhileStudying(on))) {
+      showLevelUpsWhileStudying = !on;
       notifyListeners();
     }
   }

@@ -512,11 +512,37 @@ void main() {
       ]);
       expect(tester.widget<SwitchListTile>(rewards).value, isFalse);
 
+      // Celebration sounds and vibration: on by default, saved, and hidden
+      // while Show streaks and goals is off (spec).
+      final sounds = find.byKey(const Key('celebration-sounds'));
+      await scrollTo(tester, sounds);
+      expect(tester.widget<SwitchListTile>(sounds).value, isTrue);
+      await tester.tap(sounds);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetCelebrationSounds'), [
+        [false],
+      ]);
+      expect(tester.widget<SwitchListTile>(sounds).value, isFalse);
+
+      // Show level-ups while studying: on by default, saved, and hidden
+      // while Show streaks and goals is off (spec).
+      final levelUps = find.byKey(const Key('show-level-ups-while-studying'));
+      await scrollTo(tester, levelUps);
+      expect(tester.widget<SwitchListTile>(levelUps).value, isTrue);
+      await tester.tap(levelUps);
+      await tester.pumpAndSettle();
+      expect(go.callsTo('app.SetShowLevelUpsWhileStudying'), [
+        [false],
+      ]);
+      expect(tester.widget<SwitchListTile>(levelUps).value, isFalse);
+
       await tester.scrollUntilVisible(
         show,
         -200,
         scrollable: find.byType(Scrollable).last,
       );
+      await tester.ensureVisible(show);
+      await tester.pumpAndSettle();
       await tester.tap(show);
       await tester.pumpAndSettle();
       expect(go.callsTo('app.SetShowProgress'), [
@@ -524,6 +550,8 @@ void main() {
       ]);
       expect(tester.widget<SwitchListTile>(show).value, isFalse);
       expect(rewards, findsNothing);
+      expect(sounds, findsNothing);
+      expect(levelUps, findsNothing);
 
       // Show deck progress in the deck list: off by default, and saved.
       final inList = find.byKey(const Key('deck-progress-in-list'));

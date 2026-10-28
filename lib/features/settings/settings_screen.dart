@@ -406,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: settings.showProgress,
               onChanged: settings.setShowProgress,
             ),
-            if (settings.showProgress)
+            if (settings.showProgress) ...[
               SwitchListTile(
                 key: const Key('show-study-rewards'),
                 title: Text(l.showStudyRewards),
@@ -414,6 +414,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 value: settings.showStudyRewards,
                 onChanged: settings.setShowStudyRewards,
               ),
+              SwitchListTile(
+                key: const Key('celebration-sounds'),
+                title: Text(l.celebrationSounds),
+                subtitle: Text(l.celebrationSoundsHelp),
+                value: settings.celebrationSounds,
+                onChanged: settings.setCelebrationSounds,
+              ),
+              SwitchListTile(
+                key: const Key('show-level-ups-while-studying'),
+                title: Text(l.showLevelUpsWhileStudying),
+                subtitle: Text(l.showLevelUpsWhileStudyingHelp),
+                value: settings.showLevelUpsWhileStudying,
+                onChanged: settings.setShowLevelUpsWhileStudying,
+              ),
+            ],
             SwitchListTile(
               key: const Key('deck-progress-in-list'),
               title: Text(l.deckProgressInList),

@@ -20,6 +20,8 @@ import 'package:cardflip/features/editor/math_insert.dart' show MenuEntryLabel;
 import 'package:cardflip/features/editor/note_editor_screen.dart';
 import 'package:cardflip/features/progress/reward_card.dart';
 import 'package:cardflip/features/progress/reward_banner.dart';
+import 'package:cardflip/features/progress/celebration_feedback.dart';
+import 'package:cardflip/features/progress/celebration_sequence.dart';
 import 'package:cardflip/features/progress/session_rewards.dart';
 import 'package:cardflip/features/settings/daily_goal_dialog.dart';
 import 'package:cardflip/golang/golang.dart' as golang;
@@ -151,6 +153,11 @@ List<String> ratingNames(AppLocalizations l) => [
   l.easy,
 ];
 
+/// Why celebration pages are on show (add-celebration-screens design
+/// decisions 1 and 9): the session ended, an answer raised the level while
+/// studying, or the user leaves the session with Back.
+enum _CelebrationReason { end, study, leave }
+
 /// Studies the due cards of a deck and its subdecks, one card at a time.
 class StudyScreen extends StatefulWidget {
   const StudyScreen({super.key, required this.deckId, required this.deckName});
@@ -263,10 +270,36 @@ class _StudyScreenState extends State<StudyScreen> {
   /// answers find rewards: an undo reloads it too.
   bool _awaitingProgress = false;
 
+  /// Set when that progress came while the answer's call still ran: it is
+  /// handled once the next card or the summary is on screen.
+  bool _progressAfterCall = false;
+
   /// The reward banner on show, and its number, which a new one changes so
   /// it starts again.
   RewardEvents? _banner;
   int _bannerCount = 0;
+
+  /// The celebration pages (progress spec, "Celebration sequence",
+  /// "Celebrations when leaving with Back" and "Level-up while studying"),
+  /// why they are shown, the one on show and the number of the sequence,
+  /// which keys its pages. While [_celebrationsPending], the pages wait for
+  /// the progress after the last answer, at most [_celebrationWait].
+  List<CelebrationEvent> _celebrations = const [];
+  _CelebrationReason _reason = _CelebrationReason.end;
+  int _page = 0;
+  int _sequence = 0;
+  bool _celebrationsPending = false;
+  Timer? _celebrationTimer;
+  static const _celebrationWait = Duration(milliseconds: 400);
+
+  /// The goal and tiers of the answer that showed the level page during
+  /// study, for a banner once it closes, and whether a timebox fell due
+  /// meanwhile (design decision 9).
+  RewardEvents? _bannerAfterPage;
+  bool _timeboxAfterPage = false;
+
+  /// Set once the screen pops after Back, so it pops only once.
+  bool _left = false;
 
   @override
   void initState() {
@@ -285,6 +318,7 @@ class _StudyScreenState extends State<StudyScreen> {
       }, onError: (Object _) {});
     }
     _progress.addListener(_progressChanged);
+    CelebrationFeedback.instance.prepare(AppScope.read(context).settings);
     _openSessions = AppScope.read(context).openSessions;
     _openSessions.value++;
     _barsHidden = AppScope.read(context).barsHidden;
@@ -313,6 +347,8 @@ class _StudyScreenState extends State<StudyScreen> {
     _typedFocus.dispose();
     _screenFocus.dispose();
     _learningTimer?.cancel();
+    _celebrationTimer?.cancel();
+    CelebrationFeedback.instance.release();
     // Left before the summary: the deck list names what no banner showed.
     if (!_summaryShown) _progress.leftSession(_rewards);
     _openSessions.value--;
@@ -333,20 +369,199 @@ class _StudyScreenState extends State<StudyScreen> {
   void _progressChanged() {
     final p = _progress.progress;
     final summary = _summaryShown;
-    if (p == null || !(_awaitingProgress || summary)) return;
+    if (p == null || !(_awaitingProgress || summary || _celebrationsPending)) {
+      return;
+    }
+    // Whether a level page comes before the next card or with the summary
+    // depends on what the answer shows.
+    if (_busy && _awaitingProgress && !_celebrationsPending) {
+      _progressAfterCall = true;
+      return;
+    }
     _awaitingProgress = false;
     final events = _rewards.update(p, _progress.newAchievements);
     if (events.tiers.isNotEmpty) _progress.markSeen(events.tiers);
-    if (summary) {
-      _rewards.showAll();
-    } else if (!events.isEmpty && mounted) {
-      _showBanner(events);
+    if (mounted) {
+      if (_celebrationsPending) {
+        _showCelebrations(p);
+      } else if (!summary &&
+          !_celebrating &&
+          !_showLevelPage(p, events) &&
+          !events.isEmpty) {
+        _showBanner(events);
+      }
+    }
+    if (summary) _rewards.showAll();
+  }
+
+  /// Whether a celebration page, or the wait for them, is on show.
+  bool get _celebrating => _celebrationsPending || _page < _celebrations.length;
+
+  /// Whether the card on screen waits for celebration pages over it: its
+  /// timer, audio and auto advance start when the level page closes.
+  bool get _cardOnHold => _celebrating && _reason != _CelebrationReason.end;
+
+  /// The summary came up: shows the celebration pages first, unless streaks
+  /// and goals are off.
+  void _startCelebrations() {
+    if (!AppScope.read(context).settings.showProgress) return;
+    _awaitCelebrations(_CelebrationReason.end);
+  }
+
+  /// Shows the celebration pages for [reason] once the progress after the
+  /// last answer is known. Until then the screen stays empty, at most
+  /// [_celebrationWait].
+  void _awaitCelebrations(_CelebrationReason reason) {
+    _reason = reason;
+    final p = _progress.progress;
+    if (!_awaitingProgress && p != null) return _showCelebrations(p);
+    setState(() {
+      _celebrations = const [];
+      _page = 0;
+      _celebrationsPending = true;
+    });
+    // The numbers after the session's last answer, as the summary loads
+    // them; a load that fails shows no pages.
+    _progress.load().whenComplete(() {
+      if (mounted && _celebrationsPending) _showCelebrations(null);
+    });
+    _celebrationTimer?.cancel();
+    _celebrationTimer = Timer(_celebrationWait, () {
+      if (mounted && _celebrationsPending) _showCelebrations(null);
+    });
+  }
+
+  /// Shows the celebration pages for [p], none without it. Leaving with
+  /// Back and none to show leaves at once.
+  void _showCelebrations(golang.Progress? p) {
+    _celebrationTimer?.cancel();
+    final pages = p == null
+        ? const <CelebrationEvent>[]
+        : _rewards.celebrations(p, studiedBefore: _studiedBefore);
+    if (pages.isEmpty && _reason == _CelebrationReason.leave) {
+      return _leaveNow();
+    }
+    setState(() {
+      _celebrationsPending = false;
+      _celebrations = pages;
+      _page = 0;
+      _sequence++;
+    });
+  }
+
+  /// Shows the level page while studying (design decision 9) when [p], the
+  /// progress after an answer with a card still to study, reached a new
+  /// level and the setting is on. The card on screen waits for it, and
+  /// the answer's goal and tiers, [events], get their banner once it
+  /// closes. Returns whether it did.
+  bool _showLevelPage(golang.Progress p, RewardEvents events) {
+    final settings = AppScope.read(context).settings;
+    if (_state?.card == null ||
+        !settings.showProgress ||
+        !settings.showLevelUpsWhileStudying) {
+      return false;
+    }
+    final page = _rewards.levelCelebration(p);
+    if (page == null) return false;
+    // The level and its Level tiers count as shown now.
+    _bannerAfterPage = RewardEvents(
+      goal: events.goal,
+      tiers: [
+        for (final a in events.tiers)
+          if (!_rewards.shown.contains(a.key)) a,
+      ],
+    );
+    _holdCard();
+    setState(() {
+      _reason = _CelebrationReason.study;
+      _celebrations = [page];
+      _page = 0;
+      _sequence++;
+    });
+    return true;
+  }
+
+  /// Stops the card on screen while celebration pages cover it: its audio,
+  /// its timer and the auto advance countdown.
+  void _holdCard() {
+    _player.stop();
+    _timer.stop();
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    _autoWaitsForSounds = false;
+  }
+
+  void _nextCelebration() {
+    if (_page + 1 < _celebrations.length) {
+      setState(() => _page++);
+    } else {
+      _celebrationsDone();
     }
   }
+
+  /// Skips the remaining celebration pages.
+  void _skipCelebrations() => _celebrationsDone();
+
+  /// The last celebration page closed, or the pages were skipped: the
+  /// summary shows, studying goes on, or the session is left.
+  void _celebrationsDone() {
+    _celebrationTimer?.cancel();
+    // The last page stays while the screen pops.
+    if (_reason == _CelebrationReason.leave) return _leaveNow();
+    setState(() {
+      _celebrationsPending = false;
+      _page = _celebrations.length;
+    });
+    _focusScreen();
+    if (_reason == _CelebrationReason.study) _resumeStudy();
+  }
+
+  /// The level page during study closed: the card under it starts now, its
+  /// time at 0, with its audio and auto advance; then the answer's goal and
+  /// tiers get their banner, and a timebox due meanwhile shows.
+  void _resumeStudy() {
+    final card = _state?.card;
+    if (card != null) {
+      _timer
+        ..reset()
+        ..start();
+      _showQuestion(card);
+      _restartAutoAdvance();
+    }
+    final banner = _bannerAfterPage;
+    _bannerAfterPage = null;
+    if (banner != null && !banner.isEmpty) _showBanner(banner);
+    if (_timeboxAfterPage) {
+      _timeboxAfterPage = false;
+      _checkTimebox();
+    }
+  }
+
+  /// Back while studying (design decision 1): the celebration pages for
+  /// what the session earned and no page celebrated yet, then the deck
+  /// list; without pages, the deck list at once.
+  void _leave() {
+    if (_reason == _CelebrationReason.leave) return;
+    _holdCard();
+    _awaitCelebrations(_CelebrationReason.leave);
+  }
+
+  /// Pops the screen after Back, once.
+  void _leaveNow() {
+    if (_left) return;
+    _left = true;
+    Navigator.of(context).pop();
+  }
+
+  /// Gives the screen's shortcuts the focus back from a celebration page.
+  void _focusScreen() => WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) _screenFocus.requestFocus();
+  });
 
   /// Shows a reward banner for [events], replacing one on show, unless
   /// rewards while studying, or streaks and goals, are off. They count as
   /// shown from now on, also when the session is left during the banner.
+  /// It plays the sound of its biggest event (design decision 7).
   void _showBanner(RewardEvents events) {
     final settings = AppScope.read(context).settings;
     if (!settings.showProgress || !settings.showStudyRewards) return;
@@ -355,6 +570,14 @@ class _StudyScreenState extends State<StudyScreen> {
       _banner = events;
       _bannerCount++;
     });
+    final sound = events.named.isNotEmpty
+        ? CelebrationSound.achievement
+        : events.level != null
+        ? CelebrationSound.level
+        : CelebrationSound.chime;
+    CelebrationFeedback.instance
+      ..play(settings, sound)
+      ..vibrate(settings, CelebrationHaptic.light);
   }
 
   /// Runs a study call and shows its result; a new card starts unrevealed.
@@ -384,6 +607,10 @@ class _StudyScreenState extends State<StudyScreen> {
   /// Ends a call; a change it held back is handled now.
   void _idle() {
     setState(() => _busy = false);
+    if (_progressAfterCall) {
+      _progressAfterCall = false;
+      _progressChanged();
+    }
     if (_renderPending) {
       final synced = _syncPending;
       _renderPending = _syncPending = false;
@@ -428,6 +655,7 @@ class _StudyScreenState extends State<StudyScreen> {
   }) {
     final sameCard = state.card?.cardID == _state?.card?.cardID;
     final newCard = !(keepRevealed && sameCard);
+    final wasSummary = _summaryShown;
     setState(() {
       _state = state;
       _pending = null;
@@ -438,6 +666,10 @@ class _StudyScreenState extends State<StudyScreen> {
         _autoAdvance = false;
         _banner = null;
         if (state.studied > 0) _rewards.showAll();
+      } else if (newCard && _reason == _CelebrationReason.end) {
+        // A learning card continues the session after the summary.
+        _celebrations = const [];
+        _celebrationsPending = false;
       }
       if (newCard) {
         _revealed = false;
@@ -445,12 +677,17 @@ class _StudyScreenState extends State<StudyScreen> {
         _comparedAnswer = null;
         _typed.clear();
         _timerFrozen = null;
-        _timer
-          ..reset()
-          ..start();
+        _timer.reset();
+        if (!_cardOnHold) _timer.start();
       }
     });
-    if (newCard) {
+    if (state.card == null &&
+        state.studied > 0 &&
+        !wasSummary &&
+        _reason != _CelebrationReason.leave) {
+      _startCelebrations();
+    }
+    if (newCard && !_cardOnHold) {
       _showQuestion(state.card);
       _restartAutoAdvance();
     }
@@ -618,7 +855,7 @@ class _StudyScreenState extends State<StudyScreen> {
     _autoTimer = null;
     _autoWaitsForSounds = false;
     final card = _state?.card;
-    if (!_autoAdvance || card == null) return;
+    if (!_autoAdvance || card == null || _cardOnHold) return;
     final seconds = _revealed
         ? card.secondsToShowAnswer
         : card.secondsToShowQuestion;
@@ -767,6 +1004,19 @@ class _StudyScreenState extends State<StudyScreen> {
     final state = _state;
     if (minutes <= 0 || state?.card == null) return;
     if (_timebox.elapsed < Duration(minutes: minutes)) return;
+    // A level page the answer brings comes first, and the message waits
+    // until it closes (design decision 9).
+    final settings = AppScope.read(context).settings;
+    if (_awaitingProgress &&
+        settings.showProgress &&
+        settings.showLevelUpsWhileStudying) {
+      await _progress.load();
+      if (!mounted) return;
+    }
+    if (_cardOnHold) {
+      _timeboxAfterPage = true;
+      return;
+    }
     final studied = state!.studied - _timeboxStudied;
     // The next card's time starts once the message is closed.
     final timing = _timer.isRunning;
@@ -989,6 +1239,10 @@ class _StudyScreenState extends State<StudyScreen> {
 
   bool _typing() => _typedFocus.hasFocus;
 
+  /// Whether the study keys do nothing: while typing an answer, and on a
+  /// celebration page (progress spec, "Studying waits for the level page").
+  bool _keysOff() => _celebrating || _typing();
+
   /// The card actions menu button, where the flag menu opens.
   final _menuKey = GlobalKey();
 
@@ -1109,11 +1363,27 @@ class _StudyScreenState extends State<StudyScreen> {
     _onScreen =
         Visibility.of(context) && (ModalRoute.of(context)?.isCurrent ?? true);
     _syncBars(hideBars && _onScreen);
+    final celebrating = _celebrating;
+    final settings = AppScope.of(context).settings;
+    // Back while studying first shows what the session earned.
+    final leaveWithPages =
+        card != null &&
+        settings.showProgress &&
+        (_state?.studied ?? 0) > 0 &&
+        Navigator.canPop(context);
     return PopScope(
+      // Back on a celebration page skips the pages instead of leaving.
+      canPop: !celebrating && !leaveWithPages,
       // Stop as soon as the pop starts, so the video is gone well before the
       // player is freed (design decision 2).
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop) _player.stop();
+        if (didPop) {
+          _player.stop();
+        } else if (_celebrating) {
+          _skipCelebrations();
+        } else if (_state?.card != null) {
+          _leave();
+        }
       },
       child: Shortcuts(
         shortcuts: {
@@ -1158,7 +1428,7 @@ class _StudyScreenState extends State<StudyScreen> {
             // setting is off. While the answer input has focus, keys other
             // than Escape type into it.
             _RevealIntent: _StudyAction<_RevealIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) {
                 if (!_revealed) return _reveal();
                 if (AppScope.read(context).settings.spaceAnswersGood) {
@@ -1168,38 +1438,38 @@ class _StudyScreenState extends State<StudyScreen> {
               },
             ),
             _RateIntent: _StudyAction<_RateIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (i) => _rate(i.rating),
             ),
             _UndoIntent: _StudyAction<_UndoIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _undo(),
             ),
             _LeaveIntent: CallbackAction<_LeaveIntent>(
               onInvoke: (_) => Navigator.of(context).maybePop(),
             ),
             _ReplayIntent: _StudyAction<_ReplayIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _replay(),
             ),
             _PauseIntent: _StudyAction<_PauseIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _player.togglePause(),
             ),
             _SeekIntent: _StudyAction<_SeekIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (i) => _player.seekBy(Duration(seconds: i.seconds)),
             ),
             _RecordIntent: _StudyAction<_RecordIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _toggleRecording(),
             ),
             _PlayVoiceIntent: _StudyAction<_PlayVoiceIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _playVoice(),
             ),
             _CardInfoIntent: _StudyAction<_CardInfoIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) {
                 final card = _state?.card;
                 if (card != null) _cardInfo(card.cardID);
@@ -1208,28 +1478,30 @@ class _StudyScreenState extends State<StudyScreen> {
             ),
             // Ctrl+Alt is AltGr on some keyboards, so it can type too.
             _PreviousCardInfoIntent: _StudyAction<_PreviousCardInfoIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _previousCardInfo(),
             ),
             _MarkIntent: _StudyAction<_MarkIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _toggleMark(),
             ),
             _AutoAdvanceIntent: _StudyAction<_AutoAdvanceIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (_) => _toggleAutoAdvance(),
             ),
             // Ctrl+Shift+D types nothing either.
-            _SetDueDateIntent: CallbackAction<_SetDueDateIntent>(
+            _SetDueDateIntent: _StudyAction<_SetDueDateIntent>(
+              () => _celebrating,
               onInvoke: (_) => _setDueDate(),
             ),
             // Ctrl+Delete deletes a word while typing an answer.
             _CardActionIntent: _StudyAction<_CardActionIntent>(
-              _typing,
+              _keysOff,
               onInvoke: (i) => _cardAction(i.action),
             ),
             // Ctrl+N types nothing, so it flags also while typing an answer.
-            _FlagIntent: CallbackAction<_FlagIntent>(
+            _FlagIntent: _StudyAction<_FlagIntent>(
+              () => _celebrating,
               onInvoke: (i) => _flag(i.flag),
             ),
           },
@@ -1237,7 +1509,8 @@ class _StudyScreenState extends State<StudyScreen> {
             focusNode: _screenFocus,
             autofocus: true,
             child: Scaffold(
-              appBar: hideBars
+              // The celebration pages fill the screen.
+              appBar: hideBars || celebrating
                   ? null
                   : AppBar(
                       title: Text(widget.deckName),
@@ -1460,7 +1733,7 @@ class _StudyScreenState extends State<StudyScreen> {
                           ),
                       ],
                     ),
-              body: hideBars
+              body: hideBars && !celebrating
                   ? SafeArea(
                       bottom: false,
                       child: Column(
@@ -1491,6 +1764,23 @@ class _StudyScreenState extends State<StudyScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final card = state.card;
+    if (_celebrationsPending) {
+      return ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: const SizedBox.expand(),
+      );
+    }
+    if (_page < _celebrations.length) {
+      final settings = AppScope.of(context).settings;
+      return CelebrationPage(
+        key: ValueKey((_sequence, _page)),
+        event: _celebrations[_page],
+        settings: settings,
+        today: studyToday(settings.rolloverHour),
+        onNext: _nextCelebration,
+        onSkip: _skipCelebrations,
+      );
+    }
     if (card == null) {
       final onContinue = _pending != null ? _continue : null;
       return state.studied == 0
@@ -2232,6 +2522,8 @@ class _ProgressLinesState extends State<_ProgressLines> {
           },
           if (!levelUp)
             l.levelXpLeft(p.level, p.nextLevelXP - p.xp, p.level + 1),
+          if (rewards?.xpEarned(p) case final xp? when xp > 0)
+            l.xpThisSession(xp),
         ];
         final card = RewardCard(
           goalReached: goalUp,
@@ -2241,7 +2533,6 @@ class _ProgressLinesState extends State<_ProgressLines> {
           ),
           levelTo: (level: p.level, fraction: levelFraction(p)),
           tiers: named,
-          animate: !reduceMotion(context),
           minimalist: settings.minimalist,
         );
         final suggest =

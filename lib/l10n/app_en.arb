@@ -3838,6 +3838,74 @@
       }
     }
   },
+  "celebrationStreak": "{count, plural, =1{1 day streak} other{{count} day streak}}",
+  "@celebrationStreak": {
+    "description": "Headline of the streak celebration page after a session, e.g. \"13 day streak\".",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "celebrationBest": "New personal best",
+  "@celebrationBest": {
+    "description": "Streak celebration page, when the current streak equals the longest."
+  },
+  "celebrationNewAchievement": "New achievement",
+  "@celebrationNewAchievement": {
+    "description": "Headline of an achievement celebration page."
+  },
+  "celebrationNewAchievements": "New achievements",
+  "@celebrationNewAchievements": {
+    "description": "Headline of the celebration page for the tiers beyond the first three."
+  },
+  "celebrationTier": "{name} · {tier}",
+  "@celebrationTier": {
+    "description": "An achievement celebration page's tier and its rank, e.g. \"1,000 answers · Silver\".",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "tier": {
+        "type": "String"
+      }
+    }
+  },
+  "xpGained": "+{xp} XP",
+  "@xpGained": {
+    "description": "The experience points a celebrated event earned, e.g. \"+50 XP\".",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "xpToLevel": "{xp} XP to level {next}",
+  "@xpToLevel": {
+    "description": "Level celebration page: the XP left to the next level, e.g. \"640 XP to level 14\".",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "format": "decimalPattern"
+      },
+      "next": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
+  "xpThisSession": "+{xp} XP this session",
+  "@xpThisSession": {
+    "description": "Summary line: the experience points the session earned, e.g. \"+48 XP this session\".",
+    "placeholders": {
+      "xp": {
+        "type": "int",
+        "format": "decimalPattern"
+      }
+    }
+  },
   "goalReached": "Daily goal reached",
   "levelBanner": "Level {level}",
   "@levelBanner": {
@@ -4241,6 +4309,10 @@
   "showStreaksAndGoalsHelp": "On the deck list and after studying. Only on this device.",
   "showStudyRewards": "Show rewards while studying",
   "showStudyRewardsHelp": "A short banner when you reach your goal, a level or an achievement. Only on this device.",
+  "celebrationSounds": "Celebration sounds and vibration",
+  "celebrationSoundsHelp": "A short sound, and a vibration on phones, for rewards and celebrations. Only on this device.",
+  "showLevelUpsWhileStudying": "Show level-ups while studying",
+  "showLevelUpsWhileStudyingHelp": "A full page as soon as you reach a new level. Off, a banner says it and the page comes at the end of the session. Only on this device.",
   "deckProgressInList": "Show deck progress in the deck list",
   "deckProgressInListHelp": "A thin bar of new, learning, young and mature cards under each deck. Only on this device.",
   "deckProgress": "Progress",

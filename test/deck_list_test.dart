@@ -18,6 +18,7 @@ import 'package:cardflip/golang/golang.dart' as golang;
 import 'package:cardflip/widgets/time_format.dart';
 
 import 'deck_overview_test.dart' show handleStudy;
+import 'study_progress_test.dart' show continueToSummary;
 import 'study_test.dart' show FakeStudy, studyCard;
 import 'support/fake_go.dart';
 
@@ -1840,11 +1841,13 @@ void pickerTests() {
         .data!;
 
     /// Opens a session of two cards from the deck list with [before] as
-    /// the progress.
+    /// the progress; [banner] and [levelUps] are *Show rewards while
+    /// studying* and *Show level-ups while studying*.
     Future<FakeGo> open(
       WidgetTester tester,
       Map<String, Object?> before, {
       bool banner = true,
+      bool levelUps = false,
     }) async {
       final go = FakeGo()..progress = before;
       go.settings = {
@@ -1852,6 +1855,7 @@ void pickerTests() {
         'dailyGoalKind': 'cards',
         'dailyGoal': 30,
         'showStudyRewards': banner,
+        'showLevelUpsWhileStudying': levelUps,
       };
       FakeStudy(go, [
         studyCard(1, 'hola', 'hello'),
@@ -1879,8 +1883,20 @@ void pickerTests() {
       await tester.pumpAndSettle();
     }
 
-    Future<void> back(WidgetTester tester) async {
+    /// Leaves the session with Back, through the celebration pages it
+    /// shows; returns their headlines.
+    Future<List<String>> back(WidgetTester tester) async {
       await tester.pageBack();
+      await tester.pumpAndSettle();
+      final pages = await continueToSummary(tester);
+      expect(find.byType(StudyScreen), findsNothing);
+      return pages;
+    }
+
+    /// Closes the session without Back, as selecting the Decks destination
+    /// again does.
+    Future<void> close(WidgetTester tester) async {
+      await tester.tap(find.text('Decks').last);
       await tester.pumpAndSettle();
       expect(find.byType(StudyScreen), findsNothing);
     }
@@ -1902,23 +1918,31 @@ void pickerTests() {
     );
 
     testWidgets('banner off, left with Back', (tester) async {
-      // Banner off, left with Back (progress spec): one message for the
-      // level and the goal.
+      // Banner off, left with Back (progress spec): the goal and level
+      // pages, then the deck list without a message.
       final go = await open(tester, at(29, 3890), banner: false);
       await answer(tester, go, at(30, 3901));
       expect(find.byKey(const Key('reward-banner')), findsNothing);
-      await back(tester);
+      expect(await back(tester), ['Daily goal reached', 'Level 13']);
+      expect(message, findsNothing);
+    });
+
+    testWidgets('closed without Back', (tester) async {
+      // Closed without Back (progress spec): one message for the level and
+      // the goal, once.
+      final go = await open(tester, at(29, 3890), banner: false);
+      await answer(tester, go, at(30, 3901));
+      await close(tester);
       expect(messageText(tester), 'Reached level 13 · Daily goal reached');
-      // Once.
       go.emitChange(kind: 'sync');
       await tester.pumpAndSettle();
       expect(go.callsTo('progress.MarkSeen'), isEmpty);
     });
 
-    testWidgets('with a tier, banner off', (tester) async {
+    testWidgets('with a tier, closed without Back', (tester) async {
       final go = await open(tester, at(29, 3890), banner: false);
       await answer(tester, go, at(30, 3901, ['answers:1000']));
-      await back(tester);
+      await close(tester);
       expect(
         messageText(tester),
         'Reached level 13 · Daily goal reached · New: 1,000 answers',
@@ -1932,10 +1956,11 @@ void pickerTests() {
     });
 
     testWidgets('banner shown, left with Back', (tester) async {
-      // Banner shown, left with Back (progress spec): nothing more.
+      // Banner shown, left with Back (progress spec): the level page, then
+      // nothing more.
       final go = await open(tester, at(10, 3890));
       await answer(tester, go, at(11, 3901));
-      await back(tester);
+      expect(await back(tester), ['Level 13']);
       expect(message, findsNothing);
     });
 
@@ -1943,7 +1968,7 @@ void pickerTests() {
       // Shown by the banner (progress spec, "New achievement notice").
       final go = await open(tester, at(10, 3749));
       await answer(tester, go, at(11, 3760, ['answers:1000']));
-      await back(tester);
+      await close(tester);
       expect(message, findsNothing);
       expect(go.callsTo('progress.MarkSeen'), hasLength(1));
     });
@@ -1952,6 +1977,11 @@ void pickerTests() {
       final go = await open(tester, at(28, 3890), banner: false);
       await answer(tester, go, at(29, 3895));
       await answer(tester, go, at(30, 3901));
+      // The goal and level pages, which count as shown.
+      expect(await continueToSummary(tester), [
+        'Daily goal reached',
+        'Level 13',
+      ]);
       expect(find.text('Session complete'), findsOneWidget);
       await back(tester);
       expect(message, findsNothing);

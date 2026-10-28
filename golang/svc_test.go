@@ -668,7 +668,8 @@ func TestGoalSettings(t *testing.T) {
 	s, _ := opened(t)
 	// Defaults, also in collections without the fields: no goal, streaks
 	// shown.
-	if st := must(s.app.Settings()); !st.ShowProgress || !st.ShowStudyRewards || st.DailyGoalKind != "" || st.DailyGoal != 0 || st.RestDaysPerWeek != 0 ||
+	if st := must(s.app.Settings()); !st.ShowProgress || !st.ShowStudyRewards || !st.CelebrationSounds || !st.ShowLevelUpsWhileStudying ||
+		st.DailyGoalKind != "" || st.DailyGoal != 0 || st.RestDaysPerWeek != 0 ||
 		st.GoalSuggestionShown {
 		t.Fatalf("default settings = %+v", st)
 	}
@@ -703,6 +704,22 @@ func TestGoalSettings(t *testing.T) {
 	check(t, s.app.SetShowStudyRewards(true))
 	if st := must(s.app.Settings()); !st.ShowStudyRewards {
 		t.Fatalf("rewards shown again: %+v", st)
+	}
+	check(t, s.app.SetCelebrationSounds(false))
+	if st := must(s.app.Settings()); st.CelebrationSounds {
+		t.Fatalf("celebration sounds off: %+v", st)
+	}
+	check(t, s.app.SetCelebrationSounds(true))
+	if st := must(s.app.Settings()); !st.CelebrationSounds {
+		t.Fatalf("celebration sounds on again: %+v", st)
+	}
+	check(t, s.app.SetShowLevelUpsWhileStudying(false))
+	if st := must(s.app.Settings()); st.ShowLevelUpsWhileStudying {
+		t.Fatalf("level-ups while studying off: %+v", st)
+	}
+	check(t, s.app.SetShowLevelUpsWhileStudying(true))
+	if st := must(s.app.Settings()); !st.ShowLevelUpsWhileStudying {
+		t.Fatalf("level-ups while studying on again: %+v", st)
 	}
 	// Deck progress in the deck list is off by default (spec), and no recap
 	// has been dismissed.

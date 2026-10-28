@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
@@ -6,9 +9,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cardflip/data/scope.dart';
 import 'package:cardflip/features/progress/achievement_badge.dart';
 import 'package:cardflip/features/progress/achievements_screen.dart';
+import 'package:cardflip/features/progress/celebration_feedback.dart';
+import 'package:cardflip/features/study/study_screen.dart';
 
-import 'study_test.dart' show FakeStudy, pumpStudy, studyCard;
+import 'study_test.dart'
+    show
+        FakeStudy,
+        audioCard,
+        fakeMedia,
+        inAMinute,
+        noLearnAhead,
+        pumpStudy,
+        studyCard,
+        waitForLearningCard;
+import 'support/fake_celebration_feedback.dart';
 import 'support/fake_go.dart';
+
+/// The headlines of the celebration pages, which Continue goes through
+/// to the summary.
+Future<List<String>> continueToSummary(WidgetTester tester) async {
+  final headlines = <String>[];
+  final next = find.byKey(const Key('celebration-continue'));
+  while (next.evaluate().isNotEmpty) {
+    headlines.add(
+      tester.widget<Text>(find.byKey(const Key('celebration-headline'))).data!,
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+  }
+  return headlines;
+}
 
 void main() {
   /// Studies one card of a session, with [before] as the progress when the
@@ -27,6 +58,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('rate-3')));
     await tester.pumpAndSettle();
+    await continueToSummary(tester);
     expect(find.text('Session complete'), findsOneWidget);
     return app;
   }
@@ -333,8 +365,8 @@ void main() {
     final celebration = find.byKey(const Key('celebration'));
 
     /// Answers the session's only card, with [before] as the progress at
-    /// the start and [after] once answered, and shows the first frames of
-    /// the summary.
+    /// the start and [after] once answered, goes through the celebration
+    /// pages and shows the summary.
     Future<AppState> finish(
       WidgetTester tester,
       FakeGo go, {
@@ -351,6 +383,7 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await tester.pump(const Duration(milliseconds: 20));
       }
+      await continueToSummary(tester);
       expect(find.text('Session complete'), findsOneWidget);
       return app;
     }
@@ -532,9 +565,9 @@ void main() {
       expect(go.callsTo('progress.MarkSeen'), isEmpty);
     });
 
-    testWidgets('it settles within 3 seconds, buttons usable', (tester) async {
-      // Goal reached (Celebrations, progress spec): the ring fills once
-      // while the summary's buttons stay usable.
+    testWidgets('a static recap after the sequence', (tester) async {
+      // After the sequence (progress spec): the card in its final state,
+      // without filling rings or a particle burst.
       final go = withGoal('cards', 30);
       final app = await finish(
         tester,
@@ -555,28 +588,15 @@ void main() {
         ),
       );
       expect(card, findsOneWidget);
-      // The level ring starts at the start's level.
-      expect(ringLevel(tester), '12');
-      await tester.pump(const Duration(milliseconds: 1300));
       expect(ringLevel(tester), '13');
-      expect(celebration, findsOneWidget);
-      // The burst lies over the buttons, which still work.
-      expect(
-        tester.getRect(celebration).overlaps(tester.getRect(card)),
-        isTrue,
-      );
-      await tester.tap(find.text('Back to decks'));
-      await tester.pump();
-      expect(find.text('Session complete'), findsOneWidget);
-      // Settled: nothing more moves after 3 seconds.
-      await tester.pump(const Duration(milliseconds: 1700));
-      await tester.pump();
+      expect(inCard(find.text('Daily goal reached')), findsOneWidget);
       expect(celebration, findsNothing);
       expect(tester.binding.hasScheduledFrame, isFalse);
-      // Once: not again when the progress reloads.
+      // Not again when the progress reloads.
       await app.progress.load();
       await tester.pumpAndSettle();
       expect(celebration, findsNothing);
+      expect(find.byKey(const Key('celebration-continue')), findsNothing);
     });
 
     testWidgets('the goal suggestion stays usable', (tester) async {
@@ -591,8 +611,6 @@ void main() {
           newAchievements: [newAchievementJson('answers', 1000)],
         ),
       );
-      await tester.pump(const Duration(milliseconds: 1300));
-      expect(celebration, findsOneWidget);
       await tester.tap(find.text('No thanks'));
       await tester.pump();
       expect(go.callsTo('app.GoalSuggestionShown'), hasLength(1));
@@ -746,9 +764,11 @@ void main() {
     });
 
     testWidgets('level and tier from one answer', (tester) async {
-      // Level and tier from one answer (progress spec): one banner, the
-      // Level 10 tier left out, the Answers badge.
+      // Level and tier from one answer (progress spec): with Show level-ups
+      // while studying off, one banner, the Level 10 tier left out, the
+      // Answers badge.
       final go = FakeGo();
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
       await start(tester, go, progressJson(current: 3, cards: 5, xp: 2240));
       await answer(
         tester,
@@ -810,6 +830,8 @@ void main() {
       await tester.pumpAndSettle();
       await answer(tester, go, progressJson(current: 3, cards: 7));
       await tester.pumpAndSettle();
+      // Banner already shown (progress spec): celebrated all the same.
+      expect(await continueToSummary(tester), ['New achievement']);
       expect(find.text('Session complete'), findsOneWidget);
       expect(
         find.descendant(
@@ -850,8 +872,8 @@ void main() {
     });
 
     testWidgets('none while rewards while studying are off', (tester) async {
-      // Rewards while studying off (progress spec): no banner; the summary
-      // still says the goal was reached.
+      // Rewards while studying off (progress spec): no banner; the session
+      // still ends with the celebration sequence and the reward card.
       final go = withGoal('cards', 30);
       go.settings = {...go.settings, 'showStudyRewards': false};
       FakeStudy(go, [
@@ -864,6 +886,7 @@ void main() {
       expect(banner, findsNothing);
       await answer(tester, go, goal(31));
       await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Daily goal reached']);
       expect(find.text('Session complete'), findsOneWidget);
       expect(find.text('Daily goal reached'), findsOneWidget);
     });
@@ -946,10 +969,826 @@ void main() {
       await answer(tester, go, goal(30));
       expect(banner, findsOneWidget);
       expect(find.byKey(const Key('reward-banner-motion')), findsNothing);
+      expect(find.byKey(const Key('celebration')), findsNothing);
       await tester.pump(const Duration(seconds: 2));
       expect(banner, findsOneWidget);
       await tester.pump(const Duration(milliseconds: 600));
       expect(banner, findsNothing);
+    });
+
+    testWidgets('the pop-in and the burst', (tester) async {
+      // Goal reached (progress spec): the icon pops in with a burst.
+      final go = withGoal('cards', 30);
+      await start(tester, go, goal(29));
+      await answer(tester, go, goal(30));
+      final burst = find.descendant(
+        of: banner,
+        matching: find.byKey(const Key('celebration')),
+      );
+      expect(burst, findsOneWidget);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('a chime and a light vibration per banner', (tester) async {
+      // Banner (progress spec): the chime with the banner, on Android a
+      // light vibration too.
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final feedback = useFakeCelebrationFeedback();
+      final go = withGoal('cards', 30);
+      await start(tester, go, goal(29));
+      expect(feedback.prepared, 1);
+      await answer(tester, go, goal(30));
+      expect(feedback.sounds, [CelebrationSound.chime]);
+      expect(feedback.haptics, [CelebrationHaptic.light]);
+      await tester.pumpAndSettle();
+      // Another banner, another sound and vibration.
+      await answer(
+        tester,
+        go,
+        progressJson(
+          current: 3,
+          cards: 31,
+          goalKind: 'cards',
+          goal: 30,
+          newAchievements: [newAchievementJson('answers', 1000)],
+        ),
+      );
+      expect(feedback.sounds, hasLength(2));
+      expect(feedback.haptics, [
+        CelebrationHaptic.light,
+        CelebrationHaptic.light,
+      ]);
+      await tester.pumpAndSettle();
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('the sound of the biggest event', (tester) async {
+      // Reward banner sound (progress spec): goal only, goal and tier, and
+      // a level in a banner.
+      final feedback = useFakeCelebrationFeedback();
+      final go = withGoal('cards', 30);
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
+      await start(tester, go, goal(29, xp: 3880));
+      await answer(
+        tester,
+        go,
+        progressJson(
+          current: 3,
+          cards: 30,
+          goalKind: 'cards',
+          goal: 30,
+          xp: 3895,
+          newAchievements: [newAchievementJson('answers', 1000)],
+        ),
+      );
+      expect(bannerText(tester), 'Daily goal reached · New: 1,000 answers');
+      expect(feedback.sounds, [CelebrationSound.achievement]);
+      await tester.pumpAndSettle();
+      await answer(tester, go, goal(31, xp: 3901));
+      expect(bannerText(tester), 'Level 13');
+      expect(feedback.sounds.last, CelebrationSound.level);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the chime for the goal alone', (tester) async {
+      final feedback = useFakeCelebrationFeedback();
+      final go = withGoal('cards', 30);
+      await start(tester, go, goal(29));
+      await answer(tester, go, goal(30));
+      expect(feedback.sounds, [CelebrationSound.chime]);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('no chime with the setting off', (tester) async {
+      final feedback = useFakeCelebrationFeedback();
+      final go = withGoal('cards', 30);
+      go.settings = {...go.settings, 'celebrationSounds': false};
+      await start(tester, go, goal(29));
+      await answer(tester, go, goal(30));
+      expect(banner, findsOneWidget);
+      expect(feedback.sounds, isEmpty);
+      expect(feedback.haptics, isEmpty);
+      expect(feedback.prepared, 0);
+      await tester.pumpAndSettle();
+    });
+  });
+
+  group('level page during study', () {
+    final next = find.byKey(const Key('celebration-continue'));
+    final banner = find.byKey(const Key('reward-banner'));
+    final timer = find.byKey(const Key('answerTimer'));
+    String headline(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('celebration-headline')))
+        .data!;
+
+    /// Starts a session of [cards] (three by default) at [xp] XP, level 12
+    /// by default.
+    Future<(AppState, FakeStudy)> start(
+      WidgetTester tester,
+      FakeGo go, {
+      List<Map<String, Object?>>? cards,
+      int xp = 3890,
+    }) async {
+      final study = FakeStudy(
+        go,
+        cards ??
+            [
+              studyCard(1, 'hola', 'hello'),
+              studyCard(2, 'uno', 'one'),
+              studyCard(3, 'dos', 'two'),
+            ],
+      );
+      go.progress = progressJson(current: 3, cards: 5, xp: xp);
+      return (await pumpStudy(tester, loadSettings: true), study);
+    }
+
+    /// Answers the card on screen Good with [after] as the progress, which
+    /// then reloads.
+    Future<void> answer(
+      WidgetTester tester,
+      AppState app,
+      FakeGo go,
+      Map<String, Object?> after,
+    ) async {
+      go.progress = after;
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await app.progress.load();
+      await tester.pump();
+    }
+
+    /// The progress at level 13, 3,901 XP.
+    Map<String, Object?> level13({
+      List<Map<String, Object?>> newAchievements = const [],
+    }) => progressJson(
+      current: 3,
+      cards: 6,
+      xp: 3901,
+      newAchievements: newAchievements,
+    );
+
+    testWidgets('the level page before the next card', (tester) async {
+      // Level-up mid-session (progress spec).
+      final go = FakeGo();
+      final (app, _) = await start(tester, go);
+      await answer(tester, app, go, level13());
+      expect(headline(tester), 'Level 13');
+      expect(find.text('Show answer'), findsNothing);
+      expect(banner, findsNothing);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.textContaining('uno', findRichText: true), findsOneWidget);
+      expect(find.text('Show answer'), findsOneWidget);
+      // No banner names the level either.
+      expect(banner, findsNothing);
+    });
+
+    testWidgets('the timer starts after the page', (tester) async {
+      // Timer starts after the page (progress spec).
+      final go = FakeGo();
+      final (app, study) = await start(
+        tester,
+        go,
+        cards: [
+          studyCard(1, 'hola', 'hello', showTimer: true),
+          studyCard(2, 'uno', 'one', showTimer: true),
+        ],
+      );
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(seconds: 5));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(tester.widget<Text>(timer).data, '0:00');
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.widget<Text>(timer).data, '0:02');
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pumpAndSettle();
+      expect(study.answers.last[2] as int, lessThan(5000));
+    });
+
+    testWidgets('Escape returns to studying', (tester) async {
+      // Escape returns to studying (progress spec) and Escape on the level
+      // page (study-session spec).
+      final go = FakeGo();
+      final (app, _) = await start(tester, go);
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Show answer'), findsOneWidget);
+      // The study keys work again.
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('rate-3')), findsOneWidget);
+    });
+
+    testWidgets('system Back returns to studying', (tester) async {
+      final go = FakeGo();
+      final (app, _) = await start(tester, go);
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Show answer'), findsOneWidget);
+    });
+
+    testWidgets('undo and rating keys do nothing', (tester) async {
+      // Undo on the page (progress spec).
+      final go = FakeGo();
+      final (app, study) = await start(tester, go);
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(seconds: 1));
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyZ);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit3);
+      await tester.pumpAndSettle();
+      // A card action key too: Ctrl+N flags.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await tester.pumpAndSettle();
+      expect(headline(tester), 'Level 13');
+      expect(go.callsTo('study.Undo'), isEmpty);
+      expect(go.callsTo('study.SetFlag'), isEmpty);
+      expect(study.answers, hasLength(1));
+    });
+
+    testWidgets('the answer\'s tier gets a banner after the page', (
+      tester,
+    ) async {
+      // Level and tier from one answer (progress spec): the Level 10 tier
+      // left out.
+      final go = FakeGo();
+      final (app, _) = await start(tester, go, xp: 2240);
+      await answer(
+        tester,
+        app,
+        go,
+        progressJson(
+          current: 3,
+          cards: 6,
+          xp: 2276,
+          newAchievements: [
+            newAchievementJson('level', 10),
+            newAchievementJson('answers', 1000),
+          ],
+        ),
+      );
+      expect(headline(tester), 'Level 10');
+      expect(banner, findsNothing);
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(next);
+      await tester.pump();
+      expect(
+        tester
+            .widget<Text>(
+              find.descendant(of: banner, matching: find.byType(Text)),
+            )
+            .data,
+        'New: 1,000 answers',
+      );
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('not again at the end', (tester) async {
+      // Not again at the end (progress spec).
+      final go = FakeGo();
+      final (app, _) = await start(
+        tester,
+        go,
+        cards: [studyCard(1, 'hola', 'hello'), studyCard(2, 'uno', 'one')],
+      );
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      go.progress = progressJson(current: 3, cards: 7, xp: 3902);
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('the last answer: the level page at the end', (tester) async {
+      // No next card: the level is part of the celebration sequence.
+      final go = FakeGo();
+      final (app, _) = await start(
+        tester,
+        go,
+        cards: [studyCard(1, 'hola', 'hello')],
+      );
+      await answer(tester, app, go, level13());
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Level 13']);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('the last answer\'s progress before its result', (
+      tester,
+    ) async {
+      // The progress reloads while the answer's call still runs: the level
+      // is still part of the celebration sequence.
+      final go = FakeGo();
+      final (app, study) = await start(
+        tester,
+        go,
+        cards: [studyCard(1, 'hola', 'hello')],
+      );
+      final gate = study.answerGate = Completer<void>();
+      go.progress = level13();
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await app.progress.load();
+      await tester.pump();
+      expect(find.byKey(const Key('celebration-headline')), findsNothing);
+      gate.complete();
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Level 13']);
+    });
+
+    testWidgets('the progress before the next card', (tester) async {
+      // The level page still comes, and the next card waits for it.
+      final go = FakeGo();
+      final (app, study) = await start(tester, go);
+      final gate = study.answerGate = Completer<void>();
+      await answer(tester, app, go, level13());
+      expect(find.byKey(const Key('celebration-headline')), findsNothing);
+      gate.complete();
+      await tester.pump();
+      await tester.pump();
+      expect(headline(tester), 'Level 13');
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('uno', findRichText: true), findsOneWidget);
+    });
+
+    testWidgets('setting off: a banner, the page at the end', (tester) async {
+      // Setting off (progress spec).
+      final go = FakeGo();
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
+      final (app, _) = await start(
+        tester,
+        go,
+        cards: [studyCard(1, 'hola', 'hello'), studyCard(2, 'uno', 'one')],
+      );
+      await answer(tester, app, go, level13());
+      expect(next, findsNothing);
+      expect(
+        find.descendant(of: banner, matching: find.text('Level 13')),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      go.progress = progressJson(current: 3, cards: 7, xp: 3902);
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Level 13']);
+    });
+
+    testWidgets('the level sound and one medium vibration', (tester) async {
+      // Level page (progress spec, "Celebration sounds and vibration").
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final feedback = useFakeCelebrationFeedback();
+      final go = FakeGo();
+      final (app, _) = await start(tester, go);
+      await answer(tester, app, go, level13());
+      await tester.pump(const Duration(seconds: 1));
+      expect(feedback.sounds, [CelebrationSound.level]);
+      expect(feedback.haptics, [CelebrationHaptic.medium]);
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(feedback.sounds, [CelebrationSound.level]);
+      debugDefaultTargetPlatformOverride = null;
+    });
+
+    testWidgets('the card audio waits for the page', (tester) async {
+      final backend = fakeMedia();
+      final go = FakeGo();
+      final (app, _) = await start(
+        tester,
+        go,
+        cards: [audioCard(1), audioCard(2)],
+      );
+      expect(backend.played, ['hola.mp3']);
+      await answer(tester, app, go, level13());
+      final played = backend.played.length;
+      expect(backend.playing, isNull);
+      await tester.pump(const Duration(seconds: 1));
+      expect(backend.played, hasLength(played));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(backend.played, hasLength(played + 1));
+      expect(backend.played.last, 'hola.mp3');
+    });
+
+    testWidgets('a timebox message waits for the page', (tester) async {
+      final go = FakeGo();
+      go.settings = {...go.settings, 'timeboxMinutes': 1};
+      final (app, _) = await start(tester, go);
+      await tester.pump(const Duration(seconds: 61));
+      await answer(tester, app, go, level13());
+      await tester.pumpAndSettle();
+      expect(headline(tester), 'Level 13');
+      expect(find.byKey(const Key('timeboxMessage')), findsNothing);
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('timeboxMessage')), findsOneWidget);
+    });
+  });
+
+  group('leaving with Back', () {
+    final next = find.byKey(const Key('celebration-continue'));
+    final under = find.byKey(const Key('under-study'));
+    String headline(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('celebration-headline')))
+        .data!;
+
+    /// Starts a session of two cards over another screen, at [before], and
+    /// answers the first Good with [after] as the progress.
+    Future<AppState> answerOne(
+      WidgetTester tester,
+      FakeGo go, {
+      required Map<String, Object?> before,
+      required Map<String, Object?> after,
+    }) async {
+      FakeStudy(go, [
+        studyCard(1, 'hola', 'hello'),
+        studyCard(2, 'uno', 'one'),
+      ]);
+      go.progress = before;
+      final app = await pumpStudy(tester, loadSettings: true, pushed: true);
+      go.progress = after;
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await app.progress.load();
+      await tester.pumpAndSettle();
+      return app;
+    }
+
+    Map<String, Object?> goal(int cards, {int xp = 3700}) => progressJson(
+      current: 3,
+      cards: cards,
+      goalKind: 'cards',
+      goal: 30,
+      xp: xp,
+    );
+
+    testWidgets('the goal page, then the deck list', (tester) async {
+      // Goal reached, left with Back (progress spec).
+      final go = withGoal('cards', 30);
+      await answerOne(tester, go, before: goal(29), after: goal(30));
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(headline(tester), 'Daily goal reached');
+      expect(under, findsNothing);
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(under, findsOneWidget);
+      expect(find.byType(StudyScreen), findsNothing);
+    });
+
+    testWidgets('Escape on the first of two pages leaves', (tester) async {
+      // Skip after Back (progress spec): the goal and level pages.
+      final go = withGoal('cards', 30);
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
+      await answerOne(
+        tester,
+        go,
+        before: goal(29, xp: 3890),
+        after: goal(30, xp: 3901),
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(headline(tester), 'Daily goal reached');
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(under, findsOneWidget);
+      expect(find.byType(StudyScreen), findsNothing);
+    });
+
+    testWidgets('nothing earned: left at once', (tester) async {
+      // Nothing earned (progress spec, "Celebrations when leaving with
+      // Back").
+      final go = withGoal('cards', 30);
+      await answerOne(tester, go, before: goal(10), after: goal(11));
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(next, findsNothing);
+      await tester.pumpAndSettle();
+      expect(under, findsOneWidget);
+    });
+
+    testWidgets('a level a banner showed gets its page', (tester) async {
+      // Banner shown, left with Back (progress spec).
+      final go = FakeGo();
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
+      await answerOne(
+        tester,
+        go,
+        before: progressJson(current: 3, cards: 5, xp: 3890),
+        after: progressJson(current: 3, cards: 6, xp: 3901),
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Level 13']);
+      expect(under, findsOneWidget);
+    });
+
+    testWidgets('the pages wait for the progress after the answer', (
+      tester,
+    ) async {
+      // Back right after an answer: the empty surface, then the page.
+      final go = withGoal('cards', 30);
+      FakeStudy(go, [
+        studyCard(1, 'hola', 'hello'),
+        studyCard(2, 'uno', 'one'),
+      ]);
+      go.progress = goal(29);
+      await pumpStudy(tester, loadSettings: true, pushed: true);
+      go.progress = goal(30);
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.text('Show answer'), findsNothing);
+      await tester.pumpAndSettle();
+      expect(headline(tester), 'Daily goal reached');
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(under, findsOneWidget);
+    });
+  });
+
+  group('celebration sequence', () {
+    final next = find.byKey(const Key('celebration-continue'));
+    String headline(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('celebration-headline')))
+        .data!;
+
+    /// The first session of the day: the streak 12 → 13, the goal of one
+    /// card reached and level 12 → 13.
+    final several = (
+      before: progressJson(current: 12, goalKind: 'cards', goal: 1, xp: 3890),
+      after: progressJson(
+        current: 13,
+        cards: 1,
+        goalKind: 'cards',
+        goal: 1,
+        xp: 3901,
+      ),
+    );
+
+    /// Answers the session's only card with [before] and [after] as the
+    /// progress, up to the first celebration page.
+    Future<AppState> finish(
+      WidgetTester tester,
+      FakeGo go, {
+      required Map<String, Object?> before,
+      required Map<String, Object?> after,
+    }) async {
+      FakeStudy(go, [studyCard(1, 'hola', 'hello')]);
+      go.progress = before;
+      final app = await pumpStudy(tester, loadSettings: true);
+      go.progress = after;
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await tester.pump();
+      return app;
+    }
+
+    testWidgets('several events in order, then the summary', (tester) async {
+      // Several events (progress spec) and Finish with streak and goal
+      // (study-session spec).
+      await finish(
+        tester,
+        withGoal('cards', 1),
+        before: several.before,
+        after: several.after,
+      );
+      expect(find.text('Session complete'), findsNothing);
+      expect(await continueToSummary(tester), [
+        '13 day streak',
+        'Daily goal reached',
+        'Level 13',
+      ]);
+      expect(find.text('Session complete'), findsOneWidget);
+      expect(find.text('Streak extended to 13 days'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('reward-card')),
+          matching: find.text('Daily goal reached'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('nothing earned: the summary at once', (tester) async {
+      // Nothing earned (progress spec).
+      await finish(
+        tester,
+        FakeGo(),
+        before: progressJson(current: 12, cards: 5, xp: 3700),
+        after: progressJson(current: 12, cards: 6, xp: 3701),
+      );
+      expect(next, findsNothing);
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('Escape skips to the summary', (tester) async {
+      // Skip (progress spec): Escape on the first of three pages.
+      await finish(
+        tester,
+        withGoal('cards', 1),
+        before: several.before,
+        after: several.after,
+      );
+      await tester.pumpAndSettle();
+      expect(headline(tester), '13 day streak');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+      // The screen's own keys work again on the summary.
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        isNot('celebration continue'),
+      );
+    });
+
+    testWidgets('system Back shows the summary instead of leaving', (
+      tester,
+    ) async {
+      await finish(
+        tester,
+        withGoal('cards', 1),
+        before: several.before,
+        after: several.after,
+      );
+      await tester.pumpAndSettle();
+      expect(headline(tester), '13 day streak');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('a rating key does nothing', (tester) async {
+      // Rating key (progress spec).
+      final go = withGoal('cards', 1);
+      await finish(tester, go, before: several.before, after: several.after);
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit3);
+      await tester.pumpAndSettle();
+      expect(headline(tester), '13 day streak');
+      expect(go.callsTo('study.Answer'), hasLength(1));
+    });
+
+    testWidgets('the level page after a banner named the level', (
+      tester,
+    ) async {
+      // Banner already shown (progress spec), which names a level while
+      // Show level-ups while studying is off.
+      final go = FakeGo();
+      go.settings = {...go.settings, 'showLevelUpsWhileStudying': false};
+      FakeStudy(go, [
+        studyCard(1, 'hola', 'hello'),
+        studyCard(2, 'uno', 'one'),
+      ]);
+      go.progress = progressJson(current: 3, cards: 5, xp: 3890);
+      final app = await pumpStudy(tester, loadSettings: true);
+      go.progress = progressJson(current: 3, cards: 6, xp: 3901);
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pump();
+      await app.progress.load();
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('reward-banner')),
+          matching: find.text('Level 13'),
+        ),
+        findsOneWidget,
+      );
+      await tester.pumpAndSettle();
+      go.progress = progressJson(current: 3, cards: 7, xp: 3902);
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Level 13']);
+    });
+
+    testWidgets('no new pages on a second summary', (tester) async {
+      // Continued after the summary (progress spec).
+      final go = withGoal('cards', 1);
+      noLearnAhead(go);
+      final cards = [studyCard(1, 'hola', 'hello')];
+      final study = FakeStudy(go, cards);
+      go.progress = progressJson(
+        current: 3,
+        cards: 5,
+        goalKind: 'cards',
+        goal: 9,
+      );
+      await pumpStudy(tester, loadSettings: true);
+      go.progress = progressJson(
+        current: 3,
+        cards: 9,
+        goalKind: 'cards',
+        goal: 9,
+      );
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      study.learningDue = inAMinute();
+      await tester.tap(find.byKey(const Key('rate-1')));
+      await tester.pumpAndSettle();
+      expect(await continueToSummary(tester), ['Daily goal reached']);
+      cards.add(studyCard(2, 'perro', 'dog', kind: 'learning'));
+      study.learningDue = null;
+      await waitForLearningCard(tester);
+      expect(find.text('Learning cards are due now'), findsOneWidget);
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      go.progress = progressJson(
+        current: 3,
+        cards: 10,
+        goalKind: 'cards',
+        goal: 9,
+      );
+      await tester.tap(find.text('Show answer'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('rate-3')));
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('none while streaks and goals are hidden', (tester) async {
+      // Streaks and goals off (progress spec): the level raised, no pages.
+      final go = FakeGo();
+      go.settings = {...go.settings, 'showProgress': false};
+      await finish(
+        tester,
+        go,
+        before: progressJson(current: 3, cards: 5, xp: 3890),
+        after: progressJson(current: 3, cards: 6, xp: 3901),
+      );
+      await tester.pumpAndSettle();
+      expect(next, findsNothing);
+      expect(find.text('Session complete'), findsOneWidget);
+    });
+
+    testWidgets('the XP the session earned', (tester) async {
+      // XP earned (progress spec): 3,712 → 3,760.
+      await finish(
+        tester,
+        FakeGo(),
+        before: progressJson(current: 12, cards: 5, xp: 3712),
+        after: progressJson(current: 12, cards: 6, xp: 3760),
+      );
+      await tester.pumpAndSettle();
+      await continueToSummary(tester);
+      expect(find.text('+48 XP this session'), findsOneWidget);
+    });
+
+    testWidgets('no XP line without XP earned', (tester) async {
+      // All answers undone (progress spec): the XP of the start at the end.
+      await finish(
+        tester,
+        FakeGo(),
+        before: progressJson(current: 12, cards: 5, xp: 3712),
+        after: progressJson(current: 12, cards: 6, xp: 3712),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Session complete'), findsOneWidget);
+      expect(find.textContaining('XP this session'), findsNothing);
     });
   });
 }

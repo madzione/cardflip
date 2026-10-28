@@ -26,22 +26,28 @@ func TestStreaks(t *testing.T) {
 	}{
 		{"empty history", nil, StreakStats{}},
 		{"only today", []int{today},
-			StreakStats{Current: 1, TodayStudied: true, Longest: 1, LongestFirst: today, LongestLast: today}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 1,
+				LongestFirst: today, LongestLast: today}},
 		// Today not studied yet (spec): the last 12 days, not today.
 		{"today not studied yet", dayRange(today-12, today-1),
-			StreakStats{Current: 12, AtRisk: true, Longest: 12, LongestFirst: today - 12, LongestLast: today - 1}},
+			StreakStats{Current: 12, AtRisk: true, CurrentFirst: today - 12, Longest: 12,
+				LongestFirst: today - 12, LongestLast: today - 1}},
 		// Gap of one day (spec): today and 5 days before yesterday.
 		{"one-day gap", append(dayRange(today-6, today-2), today),
-			StreakStats{Current: 1, TodayStudied: true, Longest: 5, LongestFirst: today - 6, LongestLast: today - 2}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 5,
+				LongestFirst: today - 6, LongestLast: today - 2}},
 		{"single long run", dayRange(today-99, today),
-			StreakStats{Current: 100, TodayStudied: true, Longest: 100, LongestFirst: today - 99, LongestLast: today}},
+			StreakStats{Current: 100, TodayStudied: true, CurrentFirst: today - 99, Longest: 100,
+				LongestFirst: today - 99, LongestLast: today}},
 		// Broken streak (spec): 40 days, then three days off, then today.
 		{"longest run in the past", append(dayRange(today-43, today-4), today),
-			StreakStats{Current: 1, TodayStudied: true, Longest: 40, LongestFirst: today - 43, LongestLast: today - 4}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 40,
+				LongestFirst: today - 43, LongestLast: today - 4}},
 		{"broken, nothing since", dayRange(today-43, today-4),
 			StreakStats{Longest: 40, LongestFirst: today - 43, LongestLast: today - 4}},
 		{"equal runs report the latest", append(dayRange(today-10, today-8), dayRange(today-3, today-1)...),
-			StreakStats{Current: 3, AtRisk: true, Longest: 3, LongestFirst: today - 3, LongestLast: today - 1}},
+			StreakStats{Current: 3, AtRisk: true, CurrentFirst: today - 3, Longest: 3,
+				LongestFirst: today - 3, LongestLast: today - 1}},
 	} {
 		if got := Streaks(tc.days, today, 0); got != tc.want {
 			t.Errorf("%s: %+v\nwant %+v", tc.name, got, tc.want)
@@ -63,39 +69,51 @@ func TestStreaksWithRestDays(t *testing.T) {
 		want StreakStats
 	}{
 		{"no rest days: a skip breaks", 0, without(dayRange(today-9, today), today-4),
-			StreakStats{Current: 4, TodayStudied: true, Longest: 5, LongestFirst: today - 9, LongestLast: today - 5}},
+			StreakStats{Current: 4, TodayStudied: true, CurrentFirst: today - 3, Longest: 5,
+				LongestFirst: today - 9, LongestLast: today - 5}},
 		// One rest day (spec): the last 10 days except 4 days ago.
 		{"one rest day", 1, without(dayRange(today-9, today), today-4),
-			StreakStats{Current: 9, TodayStudied: true, Longest: 9, LongestFirst: today - 9, LongestLast: today}},
+			StreakStats{Current: 9, TodayStudied: true, CurrentFirst: today - 9, Longest: 9,
+				LongestFirst: today - 9, LongestLast: today}},
 		// Too many rest days (spec): two skips within a week; the streak
 		// restarts after the second.
 		{"two skips in one window", 1, without(dayRange(today-8, today), today-5, today-2),
-			StreakStats{Current: 2, TodayStudied: true, Longest: 5, LongestFirst: today - 8, LongestLast: today - 3}},
+			StreakStats{Current: 2, TodayStudied: true, CurrentFirst: today - 1, Longest: 5,
+				LongestFirst: today - 8, LongestLast: today - 3}},
 		{"two rest days allow two skips", 2, without(dayRange(today-8, today), today-5, today-2),
-			StreakStats{Current: 7, TodayStudied: true, Longest: 7, LongestFirst: today - 8, LongestLast: today}},
+			StreakStats{Current: 7, TodayStudied: true, CurrentFirst: today - 8, Longest: 7,
+				LongestFirst: today - 8, LongestLast: today}},
 		{"two rest days, three skips in one window", 2, without(dayRange(today-9, today), today-7, today-5, today-3),
-			StreakStats{Current: 3, TodayStudied: true, Longest: 4, LongestFirst: today - 9, LongestLast: today - 4}},
+			StreakStats{Current: 3, TodayStudied: true, CurrentFirst: today - 2, Longest: 4,
+				LongestFirst: today - 9, LongestLast: today - 4}},
 		{"skips a week apart", 1, without(dayRange(today-10, today), today-8, today-1),
-			StreakStats{Current: 9, TodayStudied: true, Longest: 9, LongestFirst: today - 10, LongestLast: today}},
+			StreakStats{Current: 9, TodayStudied: true, CurrentFirst: today - 10, Longest: 9,
+				LongestFirst: today - 10, LongestLast: today}},
 		{"skips six days apart", 1, without(dayRange(today-10, today), today-7, today-1),
-			StreakStats{Current: 1, TodayStudied: true, Longest: 8, LongestFirst: today - 10, LongestLast: today - 2}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 8,
+				LongestFirst: today - 10, LongestLast: today - 2}},
 		{"two days off in a row with one rest day", 1, append(dayRange(today-6, today-3), today),
-			StreakStats{Current: 1, TodayStudied: true, Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 4,
+				LongestFirst: today - 6, LongestLast: today - 3}},
 		// Skips at the streak's edges: after the first study day, and
 		// yesterday with today not studied yet.
 		{"skip after the first day", 1, append([]int{today - 5}, dayRange(today-3, today)...),
-			StreakStats{Current: 5, TodayStudied: true, Longest: 5, LongestFirst: today - 5, LongestLast: today}},
+			StreakStats{Current: 5, TodayStudied: true, CurrentFirst: today - 5, Longest: 5,
+				LongestFirst: today - 5, LongestLast: today}},
 		{"yesterday skipped, at risk today", 1, dayRange(today-6, today-2),
-			StreakStats{Current: 5, AtRisk: true, Longest: 5, LongestFirst: today - 6, LongestLast: today - 2}},
+			StreakStats{Current: 5, AtRisk: true, CurrentFirst: today - 6, Longest: 5,
+				LongestFirst: today - 6, LongestLast: today - 2}},
 		{"yesterday skipped, rest day already used", 1, without(dayRange(today-6, today-2), today-4),
 			StreakStats{Longest: 4, LongestFirst: today - 6, LongestLast: today - 2}},
 		{"two days skipped, at risk with two rest days", 2, dayRange(today-6, today-3),
-			StreakStats{Current: 4, AtRisk: true, Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
+			StreakStats{Current: 4, AtRisk: true, CurrentFirst: today - 6, Longest: 4,
+				LongestFirst: today - 6, LongestLast: today - 3}},
 		{"two days skipped, broken with one rest day", 1, dayRange(today-6, today-3),
 			StreakStats{Longest: 4, LongestFirst: today - 6, LongestLast: today - 3}},
 		// Applied to history (spec): the longest streak counts rest days.
 		{"longest streak with a rest day", 1, append(without(dayRange(today-30, today-20), today-25), today),
-			StreakStats{Current: 1, TodayStudied: true, Longest: 10, LongestFirst: today - 30, LongestLast: today - 20}},
+			StreakStats{Current: 1, TodayStudied: true, CurrentFirst: today, Longest: 10,
+				LongestFirst: today - 30, LongestLast: today - 20}},
 	} {
 		if got := Streaks(tc.days, today, tc.rest); got != tc.want {
 			t.Errorf("%s: %+v\nwant %+v", tc.name, got, tc.want)

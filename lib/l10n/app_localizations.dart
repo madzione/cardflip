@@ -4484,6 +4484,54 @@ abstract class AppLocalizations {
   /// **'Current streak: {count, plural, =1{1 day} other{{count} days}}'**
   String streakCurrent(int count);
 
+  /// Headline of the streak celebration page after a session, e.g. "13 day streak".
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day streak} other{{count} day streak}}'**
+  String celebrationStreak(int count);
+
+  /// Streak celebration page, when the current streak equals the longest.
+  ///
+  /// In en, this message translates to:
+  /// **'New personal best'**
+  String get celebrationBest;
+
+  /// Headline of an achievement celebration page.
+  ///
+  /// In en, this message translates to:
+  /// **'New achievement'**
+  String get celebrationNewAchievement;
+
+  /// Headline of the celebration page for the tiers beyond the first three.
+  ///
+  /// In en, this message translates to:
+  /// **'New achievements'**
+  String get celebrationNewAchievements;
+
+  /// An achievement celebration page's tier and its rank, e.g. "1,000 answers · Silver".
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · {tier}'**
+  String celebrationTier(String name, String tier);
+
+  /// The experience points a celebrated event earned, e.g. "+50 XP".
+  ///
+  /// In en, this message translates to:
+  /// **'+{xp} XP'**
+  String xpGained(int xp);
+
+  /// Level celebration page: the XP left to the next level, e.g. "640 XP to level 14".
+  ///
+  /// In en, this message translates to:
+  /// **'{xp} XP to level {next}'**
+  String xpToLevel(int xp, int next);
+
+  /// Summary line: the experience points the session earned, e.g. "+48 XP this session".
+  ///
+  /// In en, this message translates to:
+  /// **'+{xp} XP this session'**
+  String xpThisSession(int xp);
+
   /// No description provided for @goalReached.
   ///
   /// In en, this message translates to:
@@ -5143,6 +5191,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A short banner when you reach your goal, a level or an achievement. Only on this device.'**
   String get showStudyRewardsHelp;
+
+  /// No description provided for @celebrationSounds.
+  ///
+  /// In en, this message translates to:
+  /// **'Celebration sounds and vibration'**
+  String get celebrationSounds;
+
+  /// No description provided for @celebrationSoundsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A short sound, and a vibration on phones, for rewards and celebrations. Only on this device.'**
+  String get celebrationSoundsHelp;
+
+  /// No description provided for @showLevelUpsWhileStudying.
+  ///
+  /// In en, this message translates to:
+  /// **'Show level-ups while studying'**
+  String get showLevelUpsWhileStudying;
+
+  /// No description provided for @showLevelUpsWhileStudyingHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'A full page as soon as you reach a new level. Off, a banner says it and the page comes at the end of the session. Only on this device.'**
+  String get showLevelUpsWhileStudyingHelp;
 
   /// No description provided for @deckProgressInList.
   ///

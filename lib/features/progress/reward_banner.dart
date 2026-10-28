@@ -7,6 +7,7 @@ import 'package:cardflip/l10n/l10n.dart';
 
 import 'achievement_badge.dart';
 import 'achievements.dart';
+import 'celebration.dart';
 import 'session_rewards.dart';
 
 /// The text of a reward banner for [events]: "Daily goal reached · Level 13
@@ -23,9 +24,10 @@ String rewardBannerText(AppLocalizations l, RewardEvents events) {
 /// The study screen's banner for what an answer earned (progress spec,
 /// "Reward banner during study" and "Reward banner does not interrupt"):
 /// a pill with the first tier's badge, or an icon for the level or goal,
-/// and the text. It slides up and fades in, stays, and fades out, about
-/// 2.5 seconds in all, then calls [onDone]; under reduce motion it appears
-/// and disappears at once. It takes no focus and ignores pointers, so keys
+/// and the text. It slides up and fades in while the badge or icon pops in
+/// with a small burst behind it, stays, and fades out, about 2.5 seconds
+/// in all, then calls [onDone]; under reduce motion it appears and
+/// disappears at once, without the pop or the burst. It takes no focus and ignores pointers, so keys
 /// and taps go to the screen, and screen readers hear its text as a polite
 /// announcement instead of finding it. Give a new banner a new key.
 class RewardBanner extends StatefulWidget {
@@ -55,8 +57,10 @@ class _RewardBannerState extends State<RewardBanner>
     animationBehavior: AnimationBehavior.preserve,
   );
 
-  // In over 200 ms, out over the last 300 ms.
+  // In over 200 ms, the badge popping in over 300 ms, out over the last
+  // 300 ms.
   static const _inEnd = 200 / 2500;
+  static const _popEnd = 300 / 2500;
   static const _outStart = 2200 / 2500;
 
   bool _announced = false;
@@ -91,11 +95,18 @@ class _RewardBannerState extends State<RewardBanner>
 
   @override
   Widget build(BuildContext context) {
-    final pill = _Pill(events: widget.events, minimalist: widget.minimalist);
+    final motion = !reduceMotion(context);
+    final pill = _Pill(
+      events: widget.events,
+      minimalist: widget.minimalist,
+      pop: motion
+          ? _controller.drive(CurveTween(curve: const Interval(0, _popEnd)))
+          : null,
+    );
     return IgnorePointer(
       child: ExcludeFocus(
         child: ExcludeSemantics(
-          child: reduceMotion(context)
+          child: !motion
               ? pill
               : AnimatedBuilder(
                   key: const Key('reward-banner-motion'),
@@ -123,10 +134,16 @@ class _RewardBannerState extends State<RewardBanner>
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill({required this.events, required this.minimalist});
+  const _Pill({required this.events, required this.minimalist, this.pop});
 
   final RewardEvents events;
   final bool minimalist;
+
+  /// How far the badge or icon has popped in, from 0 to 1, with a burst
+  /// behind it; null for neither.
+  final Animation<double>? pop;
+
+  static const _leadingSize = 40.0;
 
   @override
   Widget build(BuildContext context) {
@@ -135,19 +152,43 @@ class _Pill extends StatelessWidget {
     final colors = theme.colorScheme;
     final named = events.named;
     final golang.NewAchievement? first = named.isEmpty ? null : named.first;
-    final Widget leading = first != null
+    Widget leading = first != null
         ? AchievementBadge(
             id: first.id,
             tier: first.tierName,
             stars: newTierStars(first),
-            size: 28,
+            size: _leadingSize,
             minimalist: minimalist,
           )
-        : Icon(
-            events.level != null ? Icons.trending_up : Icons.flag_outlined,
-            size: 22,
-            color: colors.primary,
+        : SizedBox.square(
+            dimension: _leadingSize,
+            child: Icon(
+              events.level != null ? Icons.trending_up : Icons.flag_outlined,
+              size: 30,
+              color: colors.primary,
+            ),
           );
+    if (pop case final pop?) {
+      leading = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Positioned.fill(
+            child: Celebration(
+              key: Key('celebration'),
+              duration: Duration(milliseconds: 1400),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: pop,
+            builder: (context, child) => Transform.scale(
+              scale: Curves.easeOutBack.transform(pop.value),
+              child: child,
+            ),
+            child: leading,
+          ),
+        ],
+      );
+    }
     return Material(
       key: const Key('reward-banner'),
       color: colors.surfaceContainerHigh,
@@ -157,7 +198,7 @@ class _Pill extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 18, 6),
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 18, 6),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

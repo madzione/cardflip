@@ -692,6 +692,13 @@ type Settings struct {
 	// HideStudyRewards hides the reward banner while studying; stored
 	// inverted so that it shows by default.
 	HideStudyRewards bool `json:"hideStudyRewards,omitempty"`
+	// MuteCelebrations turns off the sounds and vibration of the
+	// celebrations; stored inverted so that they are on by default.
+	MuteCelebrations bool `json:"muteCelebrations,omitempty"`
+	// DeferLevelUps shows a level-up as a banner while studying and keeps
+	// its page for the end of the session; stored inverted so that the
+	// level page shows while studying by default.
+	DeferLevelUps bool `json:"deferLevelUps,omitempty"`
 	// GoalSuggestionShown records the one-time suggestion to set a daily
 	// goal.
 	GoalSuggestionShown bool `json:"goalSuggestion,omitempty"`

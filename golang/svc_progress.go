@@ -75,6 +75,12 @@ type Progress struct {
 	GoalKind    string `json:"goalKind"`
 	Goal        int    `json:"goal"`
 	GoalReached bool   `json:"goalReached"`
+	// GoalXP is the XP a day that meets the goal earns; 0 without a goal.
+	GoalXP int `json:"goalXp"`
+	// Week are the 7 study days ending today, oldest first: "study" for a
+	// study day, "rest" for a day without study the current streak went on
+	// over, "none" otherwise (also today before studying).
+	Week []string `json:"week"`
 	// Level is the level, XP the experience points earned in total,
 	// LevelStart those at which Level started and NextLevelXP those at
 	// which the next level starts.
@@ -97,6 +103,8 @@ type NewAchievement struct {
 	TierName  string `json:"tierName"`
 	// Key is what MarkSeen takes.
 	Key string `json:"key"`
+	// XP is the XP the tier earns (stats.XPPerTier); 0 for Level tiers.
+	XP int `json:"xp"`
 }
 
 // Today returns the streak, today's progress and the achievements not
@@ -218,6 +226,24 @@ func (s *ProgressService) WeeklyRecap(firstWeekday int) (*Recap, error) {
 	return recap, nil
 }
 
+// weekDays returns Progress.Week for today with the current streak.
+// Callers hold s.mu.
+func (s *ProgressService) weekDays(today int, streak stats.StreakStats) []string {
+	week := make([]string, 7)
+	for i := range week {
+		day := today - 6 + i
+		switch _, found := slices.BinarySearch(s.days, day); {
+		case found:
+			week[i] = "study"
+		case streak.Current > 0 && day >= streak.CurrentFirst && day < today:
+			week[i] = "rest"
+		default:
+			week[i] = "none"
+		}
+	}
+	return week
+}
+
 // week sums the study days from first on for 7 days. Callers hold s.mu.
 func (s *ProgressService) week(first int) RecapWeek {
 	var w RecapWeek
@@ -295,17 +321,21 @@ func (s *ProgressService) refresh() error {
 	// later upgrade a new achievement's.
 	var unseen []NewAchievement
 	var silent, ids []string
-	for _, a := range s.achievements {
+	for k, a := range s.achievements {
 		known := st.SeenAchievements != nil && slices.Contains(st.SeenAchievementIDs, a.ID)
 		if !known {
 			ids = append(ids, a.ID)
 		}
 		for i := range a.Earned {
-			k := a.Key(i)
+			key := a.Key(i)
 			if !known {
-				silent = append(silent, k)
-			} else if !slices.Contains(st.SeenAchievements, k) {
-				unseen = append(unseen, NewAchievement{ID: a.ID, Threshold: a.Tiers[i], TierName: a.TierNames[i], Key: k})
+				silent = append(silent, key)
+			} else if !slices.Contains(st.SeenAchievements, key) {
+				na := NewAchievement{ID: a.ID, Threshold: a.Tiers[i], TierName: a.TierNames[i], Key: key}
+				if !stats.Achievements[k].FromXP {
+					na.XP = stats.XPPerTier[na.TierName]
+				}
+				unseen = append(unseen, na)
 			}
 		}
 	}
@@ -318,7 +348,11 @@ func (s *ProgressService) refresh() error {
 	s.result = Progress{Current: streak.Current, AtRisk: streak.AtRisk, TodayStudied: streak.TodayStudied,
 		Longest: streak.Longest, TodayCards: cards, TodayMinutes: int(ms / time.Minute.Milliseconds()),
 		GoalKind: goal.Kind, Goal: goal.Value, GoalReached: goal.Met(cards, ms), Level: s.level.Level, XP: s.level.XP,
-		LevelStart: s.level.LevelStart, NextLevelXP: s.level.NextLevelXP, NewAchievements: unseen}
+		LevelStart: s.level.LevelStart, NextLevelXP: s.level.NextLevelXP, NewAchievements: unseen,
+		Week: s.weekDays(today, streak)}
+	if goal.Kind != "" {
+		s.result.GoalXP = stats.XPPerGoalDay
+	}
 	s.rev, s.today = rev, today
 	return nil
 }

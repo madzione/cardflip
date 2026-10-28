@@ -102,6 +102,9 @@ flutter:
     - LICENSES/
     - assets/licenses/
     - assets/logo/cardflip_logo_1024.png
+    # The celebration sounds, rendered from the SoundCraft session
+    # tool/sounds/celebration-sounds-C2.scs.
+    - assets/sounds/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

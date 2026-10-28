@@ -129,6 +129,12 @@ type Settings struct {
 	// the daily goal, a level or an achievement ("Show rewards while
 	// studying").
 	ShowStudyRewards bool `json:"showStudyRewards"`
+	// CelebrationSounds plays sounds and vibrates for the celebrations and
+	// reward banners ("Celebration sounds and vibration").
+	CelebrationSounds bool `json:"celebrationSounds"`
+	// ShowLevelUpsWhileStudying shows the level page as soon as an answer
+	// raises the level ("Show level-ups while studying").
+	ShowLevelUpsWhileStudying bool `json:"showLevelUpsWhileStudying"`
 	// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
 	// DailyGoal is the number of cards or minutes.
 	DailyGoalKind string `json:"dailyGoalKind"`
@@ -165,7 +171,8 @@ func (s *AppService) Settings() (Settings, error) {
 		QuestionFadeMs: int(st.QuestionFade() / time.Millisecond), RecentDecks: fromIDs(c.RecentDecks()),
 		UIScale: cmp.Or(st.UIScale, core.DefaultUIScale), Minimalist: st.Minimalist,
 		ReduceMotion: cmp.Or(st.ReduceMotion, core.ReduceMotionSystem), ShowProgress: !st.HideProgress,
-		ShowStudyRewards: !st.HideStudyRewards, DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal,
+		ShowStudyRewards: !st.HideStudyRewards, CelebrationSounds: !st.MuteCelebrations,
+		ShowLevelUpsWhileStudying: !st.DeferLevelUps, DailyGoalKind: st.DailyGoalKind, DailyGoal: st.DailyGoal,
 		RestDaysPerWeek: st.RestDaysPerWeek, GoalSuggestionShown: st.GoalSuggestionShown,
 		DeckProgressInList: st.DeckProgressInList,
 		RecapDismissedWeek: st.RecapDismissedWeek}, nil
@@ -287,6 +294,19 @@ func (s *AppService) SetShowProgress(on bool) error {
 // the device.
 func (s *AppService) SetShowStudyRewards(on bool) error {
 	return s.updateSettings(func(st *core.Settings) { st.HideStudyRewards = !on })
+}
+
+// SetCelebrationSounds sets whether celebrations and reward banners play
+// sounds and vibrate. It belongs to the device.
+func (s *AppService) SetCelebrationSounds(on bool) error {
+	return s.updateSettings(func(st *core.Settings) { st.MuteCelebrations = !on })
+}
+
+// SetShowLevelUpsWhileStudying sets whether an answer that raises the level
+// shows the level page at once, or a banner with the page at the end of
+// the session. It belongs to the device.
+func (s *AppService) SetShowLevelUpsWhileStudying(on bool) error {
+	return s.updateSettings(func(st *core.Settings) { st.DeferLevelUps = !on })
 }
 
 // SetDailyGoal sets the daily goal: kind "cards" or "minutes" with a value

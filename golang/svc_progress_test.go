@@ -63,14 +63,15 @@ func TestProgressToday(t *testing.T) {
 	s, _ := opened(t)
 	// No reviews: no streak and nothing at risk.
 	// Never studied (spec): level 1 with 0 / 50 XP.
-	if p := must(s.progress.Today()); !reflect.DeepEqual(p, Progress{Level: 1, NextLevelXP: 50}) {
+	none := []string{"none", "none", "none", "none", "none", "none", "none"}
+	if p := must(s.progress.Today()); !reflect.DeepEqual(p, Progress{Level: 1, NextLevelXP: 50, Week: none}) {
 		t.Fatalf("no reviews: %+v", p)
 	}
 	// Goal in progress (spec, card goal): 2 of 3 cards.
 	check(t, s.app.SetDailyGoal(core.GoalCards, 3))
 	studyNew(t, s, 2, 1000)
 	want := Progress{Current: 1, TodayStudied: true, Longest: 1, TodayCards: 2, GoalKind: core.GoalCards, Goal: 3,
-		Level: 1, XP: 12, NextLevelXP: 50}
+		GoalXP: 20, Week: append(none[:6:6], "study"), Level: 1, XP: 12, NextLevelXP: 50}
 	if p := must(s.progress.Today()); !reflect.DeepEqual(p, want) {
 		t.Fatalf("goal in progress: %+v\nwant              %+v", p, want)
 	}
@@ -82,7 +83,8 @@ func TestProgressToday(t *testing.T) {
 	}
 	// At risk: the next day, before studying.
 	s.advance(24 * time.Hour)
-	want = Progress{Current: 1, AtRisk: true, Longest: 1, GoalKind: core.GoalCards, Goal: 3, Level: 1, XP: 33, NextLevelXP: 50}
+	want = Progress{Current: 1, AtRisk: true, Longest: 1, GoalKind: core.GoalCards, Goal: 3, GoalXP: 20,
+		Week: append(none[:5:5], "study", "none"), Level: 1, XP: 33, NextLevelXP: 50}
 	if p := must(s.progress.Today()); !reflect.DeepEqual(p, want) {
 		t.Fatalf("at risk: %+v\nwant     %+v", p, want)
 	}
@@ -229,6 +231,34 @@ func TestProgressRestDays(t *testing.T) {
 	}
 }
 
+func TestProgressWeek(t *testing.T) {
+	s, _ := opened(t)
+	check(t, s.app.SetRestDaysPerWeek(1))
+	// Studied 5 days ago, then not for two days, which breaks the streak
+	// even with a rest day, then 2 days ago, not yesterday (a rest day)
+	// and today. 6 days ago is before any study.
+	importHistory(t, s, "week", 10, 1000, 5, 2, 0)
+	p := must(s.progress.Today())
+	want := []string{"none", "study", "none", "none", "study", "rest", "study"}
+	if p.Current != 2 || !slices.Equal(p.Week, want) {
+		t.Fatalf("week: %d %v\nwant 2 %v", p.Current, p.Week, want)
+	}
+	// Tomorrow, before studying: today's rest day is not one yet.
+	s.advance(24 * time.Hour)
+	p = must(s.progress.Today())
+	want = []string{"study", "none", "none", "study", "rest", "study", "none"}
+	if !p.AtRisk || !slices.Equal(p.Week, want) {
+		t.Fatalf("week at risk: %v\nwant %v", p.Week, want)
+	}
+	// Without rest days the streak is today's alone.
+	check(t, s.app.SetRestDaysPerWeek(0))
+	s.advance(-24 * time.Hour)
+	want = []string{"none", "study", "none", "none", "study", "none", "study"}
+	if p := must(s.progress.Today()); p.Current != 1 || !slices.Equal(p.Week, want) {
+		t.Fatalf("week without rest days: %d %v\nwant 1 %v", p.Current, p.Week, want)
+	}
+}
+
 // achievementOf returns the status of achievement id.
 func achievementOf(t *testing.T, s *services, id string) stats.AchievementStatus {
 	t.Helper()
@@ -287,8 +317,16 @@ func TestProgressAchievements(t *testing.T) {
 	}
 	check(t, s.app.SetDailyGoal(core.GoalCards, 1))
 	want = []string{"streak:7", "streak:30", "study-days:30", "daily-goal:7", "daily-goal:30", "level:5", "level:10"}
-	if got := newKeys(must(s.progress.Today())); !slices.Equal(got, want) {
+	p := must(s.progress.Today())
+	if got := newKeys(p); !slices.Equal(got, want) {
 		t.Fatalf("with a goal: %v\nwant %v", got, want)
+	}
+	// A silver tier earns 50 XP, a Level tier none.
+	if a := p.NewAchievements[4]; a.TierName != stats.Silver || a.XP != 50 {
+		t.Fatalf("silver tier: %+v", a)
+	}
+	if a := p.NewAchievements[5]; a.ID != "level" || a.XP != 0 {
+		t.Fatalf("level tier: %+v", a)
 	}
 	// Seen: marked tiers are not new again.
 	check(t, s.progress.MarkSeen(want))
@@ -298,11 +336,11 @@ func TestProgressAchievements(t *testing.T) {
 	// Today's 100th answer is new; undo (spec) locks the tier again with
 	// 99 / 100.
 	studyNew(t, s, 1, 1000)
-	p := must(s.progress.Today())
+	p = must(s.progress.Today())
 	if got := newKeys(p); !slices.Equal(got, []string{"answers:100"}) {
 		t.Fatalf("100th answer: %v", got)
 	}
-	if a := p.NewAchievements[0]; a.ID != "answers" || a.Threshold != 100 || a.TierName != stats.Bronze {
+	if a := p.NewAchievements[0]; a.ID != "answers" || a.Threshold != 100 || a.TierName != stats.Bronze || a.XP != 25 {
 		t.Fatalf("100th answer: %+v", a)
 	}
 	must(s.study.Undo())

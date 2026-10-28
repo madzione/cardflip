@@ -184,6 +184,11 @@ class GoApp {
   Future<void> setBuiltinNames(BuiltinNames names) =>
       emitter.request<Object?>('app.SetBuiltinNames', [names.toJson()]);
 
+  /// SetCelebrationSounds sets whether celebrations and reward banners play
+  /// sounds and vibrate. It belongs to the device.
+  Future<void> setCelebrationSounds(bool on_) =>
+      emitter.request<Object?>('app.SetCelebrationSounds', [on_]);
+
   /// SetDailyGoal sets the daily goal: kind "cards" or "minutes" with a value
   /// from 1 to 9,999, or kind "" for no goal (the value is then ignored).
   Future<void> setDailyGoal(String kind, int value) =>
@@ -274,6 +279,12 @@ class GoApp {
   /// time.
   Future<void> setShowIntervals(bool on_) =>
       emitter.request<Object?>('app.SetShowIntervals', [on_]);
+
+  /// SetShowLevelUpsWhileStudying sets whether an answer that raises the level
+  /// shows the level page at once, or a banner with the page at the end of
+  /// the session. It belongs to the device.
+  Future<void> setShowLevelUpsWhileStudying(bool on_) =>
+      emitter.request<Object?>('app.SetShowLevelUpsWhileStudying', [on_]);
 
   /// SetShowPlayButtons sets whether cards with audio show replay buttons.
   Future<void> setShowPlayButtons(bool on_) =>
@@ -2147,6 +2158,8 @@ class Settings {
     required this.reduceMotion,
     required this.showProgress,
     required this.showStudyRewards,
+    required this.celebrationSounds,
+    required this.showLevelUpsWhileStudying,
     required this.dailyGoalKind,
     required this.dailyGoal,
     required this.restDaysPerWeek,
@@ -2188,6 +2201,8 @@ class Settings {
       reduceMotion: m['reduceMotion'] as String,
       showProgress: m['showProgress'] as bool,
       showStudyRewards: m['showStudyRewards'] as bool,
+      celebrationSounds: m['celebrationSounds'] as bool,
+      showLevelUpsWhileStudying: m['showLevelUpsWhileStudying'] as bool,
       dailyGoalKind: m['dailyGoalKind'] as String,
       dailyGoal: m['dailyGoal'] as int,
       restDaysPerWeek: m['restDaysPerWeek'] as int,
@@ -2312,6 +2327,14 @@ class Settings {
   /// studying").
   final bool showStudyRewards;
 
+  /// CelebrationSounds plays sounds and vibrates for the celebrations and
+  /// reward banners ("Celebration sounds and vibration").
+  final bool celebrationSounds;
+
+  /// ShowLevelUpsWhileStudying shows the level page as soon as an answer
+  /// raises the level ("Show level-ups while studying").
+  final bool showLevelUpsWhileStudying;
+
   /// DailyGoalKind is "cards" or "minutes", or empty for no daily goal;
   /// DailyGoal is the number of cards or minutes.
   final String dailyGoalKind;
@@ -2365,6 +2388,8 @@ class Settings {
     'reduceMotion': reduceMotion,
     'showProgress': showProgress,
     'showStudyRewards': showStudyRewards,
+    'celebrationSounds': celebrationSounds,
+    'showLevelUpsWhileStudying': showLevelUpsWhileStudying,
     'dailyGoalKind': dailyGoalKind,
     'dailyGoal': dailyGoal,
     'restDaysPerWeek': restDaysPerWeek,
@@ -2374,7 +2399,7 @@ class Settings {
   };
 
   @override
-  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, showStudyRewards: $showStudyRewards, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown, deckProgressInList: $deckProgressInList, recapDismissedWeek: $recapDismissedWeek)';
+  String toString() => 'Settings(theme: $theme, language: $language, rolloverHour: $rolloverHour, autoContinueLearning: $autoContinueLearning, learnAheadMinutes: $learnAheadMinutes, showPlayButtons: $showPlayButtons, interruptAudio: $interruptAudio, flagNames: $flagNames, stripPasteFormatting: $stripPasteFormatting, pasteImagesAsPng: $pasteImagesAsPng, backup: $backup, deckByNoteType: $deckByNoteType, ignoreAccents: $ignoreAccents, browserColumns: $browserColumns, browserMode: $browserMode, browserSplit: $browserSplit, defaultSearch: $defaultSearch, lastDueDate: $lastDueDate, timeboxMinutes: $timeboxMinutes, showRemainingCounts: $showRemainingCounts, showIntervals: $showIntervals, spaceAnswersGood: $spaceAnswersGood, hideBarsDuringReview: $hideBarsDuringReview, questionFadeMs: $questionFadeMs, recentDecks: $recentDecks, uiScale: $uiScale, minimalist: $minimalist, reduceMotion: $reduceMotion, showProgress: $showProgress, showStudyRewards: $showStudyRewards, celebrationSounds: $celebrationSounds, showLevelUpsWhileStudying: $showLevelUpsWhileStudying, dailyGoalKind: $dailyGoalKind, dailyGoal: $dailyGoal, restDaysPerWeek: $restDaysPerWeek, goalSuggestionShown: $goalSuggestionShown, deckProgressInList: $deckProgressInList, recapDismissedWeek: $recapDismissedWeek)';
 }
 
 /// UndoInfo names the steps Undo and Redo act on, e.g. "Delete 3 notes";
@@ -6877,6 +6902,8 @@ class Progress {
     required this.goalKind,
     required this.goal,
     required this.goalReached,
+    required this.goalXP,
+    required this.week,
     required this.level,
     required this.xp,
     required this.levelStart,
@@ -6896,6 +6923,8 @@ class Progress {
       goalKind: m['goalKind'] as String,
       goal: m['goal'] as int,
       goalReached: m['goalReached'] as bool,
+      goalXP: m['goalXp'] as int,
+      week: (m['week'] as List<dynamic>?)?.map((x0) => x0 as String).toList() ?? const <String>[],
       level: m['level'] as int,
       xp: m['xp'] as int,
       levelStart: m['levelStart'] as int,
@@ -6931,6 +6960,14 @@ class Progress {
 
   final bool goalReached;
 
+  /// GoalXP is the XP a day that meets the goal earns; 0 without a goal.
+  final int goalXP;
+
+  /// Week are the 7 study days ending today, oldest first: "study" for a
+  /// study day, "rest" for a day without study the current streak went on
+  /// over, "none" otherwise (also today before studying).
+  final List<String> week;
+
   /// Level is the level, XP the experience points earned in total,
   /// LevelStart those at which Level started and NextLevelXP those at
   /// which the next level starts.
@@ -6957,6 +6994,8 @@ class Progress {
     'goalKind': goalKind,
     'goal': goal,
     'goalReached': goalReached,
+    'goalXp': goalXP,
+    'week': week,
     'level': level,
     'xp': xp,
     'levelStart': levelStart,
@@ -6965,7 +7004,7 @@ class Progress {
   };
 
   @override
-  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached, level: $level, xp: $xp, levelStart: $levelStart, nextLevelXP: $nextLevelXP, newAchievements: $newAchievements)';
+  String toString() => 'Progress(current: $current, atRisk: $atRisk, todayStudied: $todayStudied, longest: $longest, todayCards: $todayCards, todayMinutes: $todayMinutes, goalKind: $goalKind, goal: $goal, goalReached: $goalReached, goalXP: $goalXP, week: $week, level: $level, xp: $xp, levelStart: $levelStart, nextLevelXP: $nextLevelXP, newAchievements: $newAchievements)';
 }
 
 /// NewAchievement is an earned achievement tier not shown yet.
@@ -6975,6 +7014,7 @@ class NewAchievement {
     required this.threshold,
     required this.tierName,
     required this.key,
+    required this.xp,
   });
 
   factory NewAchievement.fromJson(Object? json) {
@@ -6984,6 +7024,7 @@ class NewAchievement {
       threshold: m['threshold'] as int,
       tierName: m['tierName'] as String,
       key: m['key'] as String,
+      xp: m['xp'] as int,
     );
   }
 
@@ -6998,15 +7039,19 @@ class NewAchievement {
   /// Key is what MarkSeen takes.
   final String key;
 
+  /// XP is the XP the tier earns (stats.XPPerTier); 0 for Level tiers.
+  final int xp;
+
   Map<String, Object?> toJson() => {
     'id': id,
     'threshold': threshold,
     'tierName': tierName,
     'key': key,
+    'xp': xp,
   };
 
   @override
-  String toString() => 'NewAchievement(id: $id, threshold: $threshold, tierName: $tierName, key: $key)';
+  String toString() => 'NewAchievement(id: $id, threshold: $threshold, tierName: $tierName, key: $key, xp: $xp)';
 }
 
 /// Recap is the weekly recap: the previous week and the week before it.

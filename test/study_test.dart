@@ -81,17 +81,10 @@ class FakeStudy {
     go.handle('study.Start', (_) => state());
     go.handle('study.Current', (_) => state());
     go.handle('study.Answer', (args) {
-      answers.add(args);
-      history.add(pos);
-      pos++;
-      studied++;
-      spentMs += args[2] as int;
-      final leech = leechAnswers[answers.length];
-      return {
-        ...state(),
-        'leech': leech != null,
-        'leechSuspended': leech ?? false,
-      };
+      final gate = answerGate;
+      if (gate == null) return _answer(args);
+      answerGate = null;
+      return gate.future.then((_) => _answer(args));
     });
     go.handle('study.Undo', (_) {
       pos = history.removeLast();
@@ -155,9 +148,27 @@ class FakeStudy {
     });
   }
 
+  /// Records an answer and moves on.
+  Map<String, Object?> _answer(List<dynamic> args) {
+    answers.add(args);
+    history.add(pos);
+    pos++;
+    studied++;
+    spentMs += args[2] as int;
+    final leech = leechAnswers[answers.length];
+    return {
+      ...state(),
+      'leech': leech != null,
+      'leechSuspended': leech ?? false,
+    };
+  }
+
   final FakeGo go;
   final List<Map<String, Object?>> cards;
   final answers = <List<dynamic>>[];
+
+  /// Holds the next answer until it completes.
+  Completer<void>? answerGate;
   final history = <int>[];
   int pos = 0;
   int studied = 0;
@@ -231,11 +242,13 @@ class FakeStudy {
 /// The study screen of deck 1. Its app state is disposed after the test,
 /// or by the test itself when [disposedByTest] (with [endStudy]), as a test
 /// that sends collection changes must: the deck list then waits for its
-/// next reload.
+/// next reload. When [pushed], it is pushed over an empty screen, which
+/// Back leaves it for.
 Future<AppState> pumpStudy(
   WidgetTester tester, {
   bool loadSettings = false,
   bool disposedByTest = false,
+  bool pushed = false,
   Size size = phone,
   Locale? locale,
 }) async {
@@ -247,18 +260,26 @@ Future<AppState> pumpStudy(
   // change the render environment and fetch it again.
   app.renderEnv.setCardSize(size);
   await tester.pump();
+  const study = StudyScreen(deckId: 1, deckName: 'Default');
+  final navigator = GlobalKey<NavigatorState>();
   await tester.pumpWidget(
     AppScope(
       state: app,
       child: MaterialApp(
+        navigatorKey: navigator,
         scaffoldMessengerKey: messengerKey,
         locale: locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
-        home: const StudyScreen(deckId: 1, deckName: 'Default'),
+        home: pushed ? const Scaffold(key: Key('under-study')) : study,
       ),
     ),
   );
+  if (pushed) {
+    navigator.currentState!.push(
+      MaterialPageRoute<void>(builder: (_) => study),
+    );
+  }
   await tester.pumpAndSettle();
   return app;
 }

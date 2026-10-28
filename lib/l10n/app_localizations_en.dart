@@ -3600,6 +3600,69 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String celebrationStreak(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString day streak',
+      one: '1 day streak',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get celebrationBest => 'New personal best';
+
+  @override
+  String get celebrationNewAchievement => 'New achievement';
+
+  @override
+  String get celebrationNewAchievements => 'New achievements';
+
+  @override
+  String celebrationTier(String name, String tier) {
+    return '$name · $tier';
+  }
+
+  @override
+  String xpGained(int xp) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+
+    return '+$xpString XP';
+  }
+
+  @override
+  String xpToLevel(int xp, int next) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return '$xpString XP to level $nextString';
+  }
+
+  @override
+  String xpThisSession(int xp) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+
+    return '+$xpString XP this session';
+  }
+
+  @override
   String get goalReached => 'Daily goal reached';
 
   @override
@@ -4060,6 +4123,20 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get showStudyRewardsHelp =>
       'A short banner when you reach your goal, a level or an achievement. Only on this device.';
+
+  @override
+  String get celebrationSounds => 'Celebration sounds and vibration';
+
+  @override
+  String get celebrationSoundsHelp =>
+      'A short sound, and a vibration on phones, for rewards and celebrations. Only on this device.';
+
+  @override
+  String get showLevelUpsWhileStudying => 'Show level-ups while studying';
+
+  @override
+  String get showLevelUpsWhileStudyingHelp =>
+      'A full page as soon as you reach a new level. Off, a banner says it and the page comes at the end of the session. Only on this device.';
 
   @override
   String get deckProgressInList => 'Show deck progress in the deck list';

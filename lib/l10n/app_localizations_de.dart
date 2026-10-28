@@ -3633,6 +3633,69 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String celebrationStreak(int count) {
+    final intl.NumberFormat countNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String countString = countNumberFormat.format(count);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countString Tage in Folge',
+      one: '1 Tag in Folge',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get celebrationBest => 'Neuer persönlicher Rekord';
+
+  @override
+  String get celebrationNewAchievement => 'Neuer Erfolg';
+
+  @override
+  String get celebrationNewAchievements => 'Neue Erfolge';
+
+  @override
+  String celebrationTier(String name, String tier) {
+    return '$name · $tier';
+  }
+
+  @override
+  String xpGained(int xp) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+
+    return '+$xpString XP';
+  }
+
+  @override
+  String xpToLevel(int xp, int next) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+    final intl.NumberFormat nextNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String nextString = nextNumberFormat.format(next);
+
+    return '$xpString XP bis Level $nextString';
+  }
+
+  @override
+  String xpThisSession(int xp) {
+    final intl.NumberFormat xpNumberFormat = intl.NumberFormat.decimalPattern(
+      localeName,
+    );
+    final String xpString = xpNumberFormat.format(xp);
+
+    return '+$xpString XP in dieser Sitzung';
+  }
+
+  @override
   String get goalReached => 'Tagesziel erreicht';
 
   @override
@@ -4097,6 +4160,20 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get showStudyRewardsHelp =>
       'Ein kurzes Banner, wenn du dein Ziel, ein Level oder einen Erfolg erreichst. Nur auf diesem Gerät.';
+
+  @override
+  String get celebrationSounds => 'Töne und Vibration für Erfolge';
+
+  @override
+  String get celebrationSoundsHelp =>
+      'Ein kurzer Ton und auf Handys eine Vibration bei Belohnungen und erreichten Erfolgen. Nur auf diesem Gerät.';
+
+  @override
+  String get showLevelUpsWhileStudying => 'Neue Level beim Lernen anzeigen';
+
+  @override
+  String get showLevelUpsWhileStudyingHelp =>
+      'Eine ganze Seite, sobald du ein neues Level erreichst. Aus: ein Banner nennt es, und die Seite kommt am Ende der Sitzung. Nur auf diesem Gerät.';
 
   @override
   String get deckProgressInList =>

@@ -253,27 +253,55 @@ Future<void> runAppFlow(
     await idle();
     expect(banner, findsNothing);
     expect(rich('[...] is in France'), findsNothing);
+    // Again brings the card back at once, within the learn ahead limit:
+    // each answer earns 1 XP, toward level 2 at 50.
+    step = 'Again on cloze 2 until its last answer reaches level 2.';
+    for (var i = 0; i < 17; i++) {
+      expect(rich('Paris is in [...]'), findsOneWidget, reason: 'again $i');
+      await tester.tap(find.text('Show answer'));
+      await idle();
+      await tester.tap(find.byKey(const Key('rate-1')));
+      await idle();
+    }
     expect(rich('Paris is in [...]'), findsOneWidget);
     await tester.tap(find.text('Show answer'));
     await idle();
     await tester.tap(find.byKey(const Key('rate-4')));
     await idle();
-    expect(find.text('Session complete'), findsOneWidget);
-    expect(find.textContaining('You studied 3 cards'), findsOneWidget);
-    // The first session of the day starts the streak and reaches the goal,
-    // which the reward card says.
-    step = 'The summary shows the streak and the goal.';
-    expect(find.text('Streak extended to 1 day'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('reward-card')),
-        matching: find.text('Daily goal reached'),
-      ),
-      findsOneWidget,
-    );
+    // The first session of the day started the streak, reached the goal
+    // and, with its last answer, level 2 (20 answers, the study day and
+    // the goal: 50 XP): a page for each, with its sound, then the summary.
+    step = 'Celebration pages for the streak, the goal and the level.';
+    final next = find.byKey(const Key('celebration-continue'));
+    expect(find.text('Session complete'), findsNothing);
+    expect(find.text('1 day streak'), findsOneWidget);
+    await tester.tap(next);
+    await idle();
     expect(find.text('Daily goal reached'), findsOneWidget);
-    // 3 answers, the study day and the goal: 33 XP of the 50 for level 2.
-    expect(find.text('Level 1 · 17 XP to level 2'), findsOneWidget);
+    expect(find.text('20 / 2 cards'), findsOneWidget);
+    expect(find.text('+20 XP'), findsOneWidget);
+    await tester.tap(next);
+    await idle();
+    expect(find.text('Level 2'), findsOneWidget);
+    expect(find.text('100 XP to level 3'), findsOneWidget);
+    await tester.tap(next);
+    await idle();
+    expect(next, findsNothing);
+    expect(find.text('Session complete'), findsOneWidget);
+    expect(find.textContaining('You studied 20 cards'), findsOneWidget);
+    // The reward card says the goal and the level.
+    step = 'The summary shows the streak, the goal and the level.';
+    expect(find.text('Streak extended to 1 day'), findsOneWidget);
+    final rewardCard = find.byKey(const Key('reward-card'));
+    for (final text in ['Daily goal reached', 'Reached level 2']) {
+      expect(
+        find.descendant(of: rewardCard, matching: find.text(text)),
+        findsOneWidget,
+        reason: text,
+      );
+    }
+    expect(find.text('Daily goal reached'), findsOneWidget);
+    expect(find.text('+50 XP this session'), findsOneWidget);
     await tester.tap(find.text('Back to decks'));
     await idle();
     // Back on the overview: nothing is due and nothing is buried.
@@ -306,12 +334,12 @@ Future<void> runAppFlow(
       findsOneWidget,
     );
     expect(
-      find.descendant(of: header, matching: find.text('3 / 2 cards')),
+      find.descendant(of: header, matching: find.text('20 / 2 cards')),
       findsOneWidget,
     );
     expect(
       tester.widget<Text>(find.byKey(const Key('level-number'))).data,
-      '1',
+      '2',
     );
     expect(
       tester
@@ -319,7 +347,7 @@ Future<void> runAppFlow(
             find.byKey(const Key('level-ring')),
           )
           .value,
-      closeTo(33 / 50, 1e-9),
+      0,
     );
 
     // The achievements: nothing earned yet, with the session's progress;
@@ -328,16 +356,16 @@ Future<void> runAppFlow(
     await tester.tap(find.byKey(const Key('progress-level')));
     await idle();
     final levelCard = find.byKey(const Key('level-card'));
-    for (final text in [
-      'Level 1',
-      '33 / 50 XP to level 2',
-      '3 XP',
-      '10 XP',
-      '20 XP',
+    for (final (text, count) in [
+      ('Level 2', 1),
+      ('0 / 100 XP to level 3', 1),
+      ('10 XP', 1),
+      // The answers and the goal.
+      ('20 XP', 2),
     ]) {
       expect(
         find.descendant(of: levelCard, matching: find.text(text)),
-        findsOneWidget,
+        findsNWidgets(count),
         reason: text,
       );
     }
@@ -345,7 +373,7 @@ Future<void> runAppFlow(
       tester
           .widget<Text>(find.byKey(const Key('achievement-answers-status')))
           .data,
-      '3 / 100',
+      '20 / 100',
     );
     expect(
       tester
@@ -477,6 +505,9 @@ Future<void> runAppFlow(
     step = 'Change something, then restore: the change is gone.';
     await golang.decks.create('Made after the backup');
     await idle();
+    // The periodic backup may have come first, at the backup timer's
+    // first tick a minute after the start.
+    final periodic = (await golang.app.backups()).backups.length;
     picker.nextBackup();
     await scrollSettingsTo(find.text('Restore backup'));
     await tester.tap(find.text('Restore backup'));
@@ -500,14 +531,14 @@ Future<void> runAppFlow(
 
     // Restoring made an automatic backup first; make another one now.
     step = 'Automatic backups: before a restore, and created now.';
-    expect((await golang.app.backups()).backups, hasLength(1));
+    expect((await golang.app.backups()).backups, hasLength(periodic + 1));
     await go('Settings');
     await scrollSettingsTo(find.text('Create backup now'));
     await idle();
     await tester.tap(find.text('Create backup now'));
     await settle();
     await idle();
-    expect(find.text('2 automatic backups'), findsOneWidget);
+    expect(find.text('${periodic + 2} automatic backups'), findsOneWidget);
     await golang.decks.create('Made after the automatic backup');
     await idle();
 
@@ -534,7 +565,7 @@ Future<void> runAppFlow(
     // list undoes the later change and leaves the media alone.
     step = 'Automatic backups survive a restart and restore.';
     final backups = (await golang.app.backups()).backups;
-    expect(backups, hasLength(2));
+    expect(backups, hasLength(periodic + 2));
     await go('Settings');
     final row = find.byKey(ValueKey(backups.first.name));
     await scrollSettingsTo(row);

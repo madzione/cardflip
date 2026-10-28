@@ -69,7 +69,7 @@ The user SHALL be able to undo the most recent answers in the current session, o
 - **THEN** the card is restored to its exact prior state and is shown again unrevealed
 
 ### Requirement: Keyboard control
-On platforms with a keyboard, Space or Enter SHALL reveal the answer and then, while the setting "Space/Enter also answers Good" is on, choose Good. Keys 1–4 SHALL choose Again, Hard, Good and Easy. Ctrl+Z (Cmd+Z on macOS) SHALL undo. Escape SHALL leave the session.
+On platforms with a keyboard, Space or Enter SHALL reveal the answer and then, while the setting "Space/Enter also answers Good" is on, choose Good. Keys 1–4 SHALL choose Again, Hard, Good and Easy. Ctrl+Z (Cmd+Z on macOS) SHALL undo. Escape SHALL leave the session, except on a celebration page, where it behaves as described in the `progress` capability.
 
 #### Scenario: Keyboard review
 - **WHEN** the user presses Space, then 3
@@ -79,6 +79,10 @@ On platforms with a keyboard, Space or Enter SHALL reveal the answer and then, w
 - **WHEN** "Space/Enter also answers Good" is off and the user presses Space twice on a new card
 - **THEN** the answer is revealed and the card is not rated
 
+#### Scenario: Escape on the level page
+- **WHEN** the level page is shown during a session and the user presses Escape
+- **THEN** the session goes on with the next card
+
 ### Requirement: Card actions during study
 While studying, the user SHALL be able to edit the current note, suspend the current card, or bury the current card. Each of these SHALL take effect immediately and advance the queue where applicable.
 
@@ -87,7 +91,7 @@ While studying, the user SHALL be able to edit the current note, suspend the cur
 - **THEN** the corrected content is shown when they return to the card
 
 ### Requirement: Session completion
-When no due cards remain and no learning card is due within the learn ahead limit, the session SHALL end with a summary showing the number of cards studied and the time spent, followed by the streak and goal lines described in the `progress` capability. If learning cards will become due later today, the summary SHALL say when, and SHALL react when they become due as described in "Learning cards becoming due while waiting".
+When no due cards remain and no learning card is due within the learn ahead limit, the session SHALL end with a summary showing the number of cards studied and the time spent, followed by the streak and goal lines described in the `progress` capability. When the session earned something to celebrate, the celebration sequence described in the `progress` capability SHALL be shown before the summary. If learning cards will become due later today, the summary SHALL say when, and SHALL react when they become due as described in "Learning cards becoming due while waiting".
 
 #### Scenario: Finish
 - **WHEN** the last due card is answered and no learning card is due within the session
@@ -99,7 +103,7 @@ When no due cards remain and no learning card is due within the learn ahead limi
 
 #### Scenario: Finish with streak and goal
 - **WHEN** the user finishes the first session of the day, the streak becomes 13 days and the goal of 30 cards is reached
-- **THEN** the summary also shows "Streak extended to 13 days" and "Daily goal reached"
+- **THEN** a streak page and a goal page are shown, and then the summary also shows "Streak extended to 13 days" and the reward card says "Daily goal reached"
 
 ### Requirement: Session survives interruption
 Every answer SHALL be saved as soon as it is given, so closing or killing the app mid-session loses at most the card currently on screen.
@@ -366,3 +370,4 @@ When achievement tiers were earned during the session, the session-complete scre
 #### Scenario: Already shown by a banner
 - **WHEN** a banner showed "New: 1,000 answers" earlier in the session
 - **THEN** the summary's reward card still names it
+

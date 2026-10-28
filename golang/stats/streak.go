@@ -18,6 +18,9 @@ type StreakStats struct {
 	AtRisk bool `json:"atRisk"`
 	// TodayStudied reports whether today is a study day.
 	TodayStudied bool `json:"todayStudied"`
+	// CurrentFirst is the first study day of the current streak (0
+	// without one).
+	CurrentFirst int `json:"currentFirst"`
 	// Longest is the longest streak, from the study day LongestFirst to
 	// LongestLast (both 0 without study days). Of streaks of equal length
 	// the latest is reported.
@@ -94,9 +97,9 @@ func Streaks(days []int, today, rest int) StreakStats {
 		}
 		if day == today {
 			out.TodayStudied = true
-			out.Current = s.run
+			out.Current, out.CurrentFirst = s.run, s.first
 		} else if day < today && (i+1 == len(days) || days[i+1] > today) && s.alive(day, today) {
-			out.Current = s.run
+			out.Current, out.CurrentFirst = s.run, s.first
 		}
 	}
 	out.AtRisk = out.Current > 0 && !out.TodayStudied

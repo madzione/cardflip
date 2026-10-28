@@ -114,14 +114,14 @@ void main() {
     ),
   );
 
-  // Settled, after the animation.
+  // A static recap: as it first appears.
   testWidgets('the card in the light theme', (tester) async {
     await golden(
       tester,
       lightTheme,
       rewardCard,
       'reward_card_light',
-      after: const Duration(seconds: 3),
+      after: Duration.zero,
     );
   });
 
@@ -131,7 +131,7 @@ void main() {
       darkTheme,
       rewardCard,
       'reward_card_dark',
-      after: const Duration(seconds: 3),
+      after: Duration.zero,
     );
   });
 }
