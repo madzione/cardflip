@@ -13,34 +13,8 @@ Linux, Windows, macOS, Android, iOS and the web.
 
 - **Learns with you.** Reviews are scheduled with FSRS, a modern
   spaced-repetition algorithm.
-- **Keeps you going.** A quiet streak counts the days in a row you studied,
-  allowing up to two rest days a week if you like, and an optional daily
-  goal of cards or minutes shows how far you are today. Achievements mark
-  milestones in bronze, silver, gold and platinum: answers, your longest
-  streak, study days, hours spent studying, days you met your goal, cards in
-  long-term memory, the level you reached, and coming back after a break.
-  Every session also earns experience points (XP): 1 per answer, 10 per
-  study day, 20 per day you met your goal, 5 per card reaching long-term
-  memory, and 25 to 200 per achievement tier. They add up to a level, which
-  needs 50 more XP for each step (level 10 at 2,250 XP) and has no top. When
-  an answer reaches your goal or an achievement, a small banner pops up for
-  a moment with a short sound, without taking your keys or taps or covering
-  the answer buttons (you can turn it off for each device). A new level gets
-  a full-screen moment right away, before the next card, whose timer and
-  audio wait for it; turn that off and the level gets a banner instead.
-  When a session ends, each thing it earned gets a full-screen moment of
-  its own before the summary: the streak with this week's days, the daily
-  goal, the new level and each new achievement, with a short sound and, on
-  phones, a vibration (also off for each device if you prefer quiet).
-  Continue moves on and Escape or Back skips to the summary, which recaps
-  it all on one card that opens your achievements. Leaving a session early
-  with Back shows the same moments first, then the deck list. At the start
-  of each week, a recap compares last week's study days, answers, study time
-  and retention with the week before. All of it comes from your review
-  history, so imports and other devices count too, with their real dates,
-  and you can turn it off. Each deck also shows how far along it is: a bar
-  of its new, learning, young and mature cards and the share already
-  mature, optionally right in the deck list.
+- **Keeps you going.** Streaks, a daily goal, achievements, XP and levels,
+  and a weekly recap, all optional.
 - **Brings your cards along.** Import CSV/TSV text files, Anki decks
   (`.apkg`) and Anki collections (`.colpkg`), including their templates,
   styling, images, audio and video.
